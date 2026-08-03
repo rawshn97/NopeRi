@@ -974,52 +974,70 @@ def apply_to_filtered_jobs(
         mandatory = job.tags[:2] if job.tags else []
         optional = job.tags[2:] if len(job.tags) > 2 else []
 
-        try:
-            result = jc.apply_job(
-                job,
-                mandatory_skills=mandatory,
-                optional_skills=optional,
-                source="search",
-            )
-
-            job_result = (result.get("jobs") or [{}])[0]
-
-            external_url = jc.external_url_from_apply_response(result, job.job_id)
-            if external_url:
-                log_external_skip(
-                    job_id=job.job_id,
-                    title=job.title,
-                    company=job.company,
-                    external_apply_url=external_url,
-                    ai_score=_job_score(meta),
-                    job_description=job.description,
-                )
-                print_status_skipped_external()
-                skipped_ext += 1
-                continue
-
-            if job_result.get("questionnaire"):
-                print_questionnaire_notice()
-                sid = datetime.utcnow().strftime("%Y%m%d%H%M%S") + "0000000"
-                result = jc.handle_static_questionnaire_and_apply(
+        auth_retried = False
+        while True:
+            try:
+                result = jc.apply_job(
                     job,
-                    questionnaire=job_result["questionnaire"],
-                    sid=sid,
                     mandatory_skills=mandatory,
                     optional_skills=optional,
                     source="search",
                 )
-                if result.get("error") and is_naukri_daily_quota_error(result["error"]):
-                    print_status_failed(result["error"])
-                    print_naukri_quota_stop(
-                        applies_24h=count_applies_last_24h(),
-                        limit=NAUKRI_DAILY_QUOTA,
-                        session_applied=applied_count,
+
+                job_result = (result.get("jobs") or [{}])[0]
+
+                external_url = jc.external_url_from_apply_response(result, job.job_id)
+                if external_url:
+                    log_external_skip(
+                        job_id=job.job_id,
+                        title=job.title,
+                        company=job.company,
+                        external_apply_url=external_url,
+                        ai_score=_job_score(meta),
+                        job_description=job.description,
                     )
-                    quota_hit = True
+                    print_status_skipped_external()
+                    skipped_ext += 1
                     break
-                if result.get("skipped"):
-                    reason = result.get("reason", "low confidence questionnaire")
+
+                if job_result.get("questionnaire"):
+                    print_questionnaire_notice()
+                    sid = datetime.utcnow().strftime("%Y%m%d%H%M%S") + "0000000"
+                    result = jc.handle_static_questionnaire_and_apply(
+                        job,
+                        questionnaire=job_result["questionnaire"],
+                        sid=sid,
+                        mandatory_skills=mandatory,
+                        optional_skills=optional,
+                        source="search",
+                    )
+                    if result.get("error") and is_naukri_daily_quota_error(result["error"]):
+                        print_status_failed(result["error"])
+                        print_naukri_quota_stop(
+                            applies_24h=count_applies_last_24h(),
+                            limit=NAUKRI_DAILY_QUOTA,
+                            session_applied=applied_count,
+                        )
+                        quota_hit = True
+                        break
+                    if result.get("skipped"):
+                        reason = result.get("reason", "low confidence questionnaire")
+                        qa_log = result.get("qa_log") or []
+                        for row in qa_log:
+                            print(
+                                f"  {Fore.WHITE}Q:{Style.RESET_ALL} {row.get('question', '')[:60]}"
+                                f"  {Fore.CYAN}A:{Style.RESET_ALL} {row.get('answer')}"
+                                f"  ({row.get('source')}/{row.get('confidence')})"
+                            )
+                        log_questionnaire_review(
+                            job,
+                            "skipped_low_confidence",
+                            qa_log,
+                            skipped_at=datetime.utcnow().isoformat(),
+                        )
+                        print_status_skipped_low_confidence(reason)
+                        failed_count += 1
+                        break
                     qa_log = result.get("qa_log") or []
                     for row in qa_log:
                         print(
@@ -1029,46 +1047,60 @@ def apply_to_filtered_jobs(
                         )
                     log_questionnaire_review(
                         job,
-                        "skipped_low_confidence",
+                        "submitted",
                         qa_log,
-                        skipped_at=datetime.utcnow().isoformat(),
+                        applied_at=datetime.utcnow().isoformat(),
                     )
-                    print_status_skipped_low_confidence(reason)
-                    failed_count += 1
-                    continue
-                qa_log = result.get("qa_log") or []
-                for row in qa_log:
-                    print(
-                        f"  {Fore.WHITE}Q:{Style.RESET_ALL} {row.get('question', '')[:60]}"
-                        f"  {Fore.CYAN}A:{Style.RESET_ALL} {row.get('answer')}"
-                        f"  ({row.get('source')}/{row.get('confidence')})"
-                    )
-                log_questionnaire_review(
-                    job,
-                    "submitted",
-                    qa_log,
-                    applied_at=datetime.utcnow().isoformat(),
-                )
 
-            applied_at = datetime.utcnow().strftime("%H:%M:%S UTC")
-            print_status_applied(applied_at)
-            save_applied_job(job)
-            applied_jobs_set.add(job.job_id)
-            applied_count += 1
-
-        except Exception as e:
-            if is_naukri_daily_quota_error(e):
-                print_status_failed(e)
-                print_naukri_quota_stop(
-                    applies_24h=count_applies_last_24h(),
-                    limit=NAUKRI_DAILY_QUOTA,
-                    session_applied=applied_count,
-                )
-                quota_hit = True
+                applied_at = datetime.utcnow().strftime("%H:%M:%S UTC")
+                print_status_applied(applied_at)
+                save_applied_job(job)
+                applied_jobs_set.add(job.job_id)
+                applied_count += 1
                 break
-            print_status_failed(e)
-            failed_count += 1
 
+            except NaukriAuthError as e:
+                if is_naukri_daily_quota_error(e):
+                    print_status_failed(e)
+                    print_naukri_quota_stop(
+                        applies_24h=count_applies_last_24h(),
+                        limit=NAUKRI_DAILY_QUOTA,
+                        session_applied=applied_count,
+                    )
+                    quota_hit = True
+                    break
+                if auth_retried:
+                    print_status_failed(e)
+                    failed_count += 1
+                    break
+                print(
+                    f"  {Fore.YELLOW}Auth expired on apply; re-logging in and retrying once..."
+                    f"{Style.RESET_ALL}"
+                )
+                try:
+                    jc._client.login()
+                except Exception as login_exc:
+                    print_status_failed(login_exc)
+                    failed_count += 1
+                    break
+                auth_retried = True
+                continue
+            except Exception as e:
+                if is_naukri_daily_quota_error(e):
+                    print_status_failed(e)
+                    print_naukri_quota_stop(
+                        applies_24h=count_applies_last_24h(),
+                        limit=NAUKRI_DAILY_QUOTA,
+                        session_applied=applied_count,
+                    )
+                    quota_hit = True
+                    break
+                print_status_failed(e)
+                failed_count += 1
+                break
+
+        if quota_hit:
+            break
         time.sleep(3)
 
     return applied_count, skipped_ext, skipped_already, failed_count, quota_hit

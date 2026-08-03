@@ -386,10 +386,29 @@ class NaukriJobClient:
 
         if res.status_code in (401, 403):
             try:
-                msg = res.json().get("message", "Auth failed")
+                body = res.json()
+                msg = (
+                    body.get("message")
+                    or body.get("error")
+                    or body.get("msg")
+                    or ""
+                ).strip()
             except Exception:
-                msg = res.text
-            raise NaukriAuthError(msg)
+                msg = (res.text or "").strip()[:200]
+            if not msg:
+                msg = f"Apply rejected (HTTP {res.status_code}; session likely expired)"
+            # Naukri often returns 401/403 for daily apply quota, not only auth.
+            if any(
+                marker in msg.lower()
+                for marker in (
+                    "daily quota",
+                    "quota of jobs exceeded",
+                    "quota exceeded",
+                    "crossed the limit of your daily quota",
+                )
+            ):
+                raise NaukriParseError(msg)
+            raise NaukriAuthError(msg, status_code=res.status_code)
 
         if not res.ok:
             raise NaukriParseError(f"Apply failed: {res.status_code} — {res.text}")

@@ -85,7 +85,7 @@ from src.client.naukri_client import NaukriLoginClient
 import os
 from dotenv import load_dotenv
 load_dotenv()
-pdf = Path('~/Projects/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf').expanduser()
+pdf = Path('~/Projects/Applying for Jobs/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf').expanduser()
 c = NaukriLoginClient(os.environ['USERNAME'], os.environ['PASSWORD'])
 c.login()
 c.update_resume(str(pdf))

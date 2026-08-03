@@ -18,11 +18,11 @@ pip install -q -r requirements.txt
 # Opt-in Drive fetch only when refreshing the profile PDF manually:
 #   FETCH_RESUME_FROM_DRIVE=1 ./run.sh
 if [[ "${FETCH_RESUME_FROM_DRIVE:-0}" == "1" ]]; then
-  FETCH_SCRIPT="/Users/rawshn/Projects/Resume Workflow/scripts/fetch_resume_master.py"
+  FETCH_SCRIPT="/Users/rawshn/Projects/Applying for Jobs/Resume Workflow/scripts/fetch_resume_master.py"
   if [[ -f "$FETCH_SCRIPT" ]]; then
     python3 "$FETCH_SCRIPT" --variant MP-CL || echo "Resume fetch skipped (check composio / Drive)" >&2
   fi
-  RESUME_PDF="/Users/rawshn/Projects/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf"
+  RESUME_PDF="/Users/rawshn/Projects/Applying for Jobs/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf"
   if [[ ! -f "$RESUME_PDF" ]]; then
     echo "Missing $RESUME_PDF - export PDF from MP-CL docx before uploading to Naukri." >&2
   fi
