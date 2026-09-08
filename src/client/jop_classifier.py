@@ -146,6 +146,9 @@ class JobFilterPipeline2:
         jobs = self.company_veto(jobs)        # ← add here
         print("AFTER COMPANY VETO:", len(jobs))
 
+        jobs = self.salary_filter(jobs)
+        print("AFTER SALARY FILTER:", len(jobs))
+
 
         jobs = self.tag_presort(jobs)
 
@@ -206,12 +209,18 @@ class JobFilterPipeline2:
                 raw_tags = re.split(r"[,;|]", raw_tags)
             tags = [t.strip().lower() for t in raw_tags if t.strip()]
 
+            salary = job.get("salary")
+            if isinstance(salary, dict):
+                salary = salary.get("label") or salary.get("salary") or str(salary)
+            salary = (str(salary).strip() if salary not in (None, "") else "Not disclosed")
+
             normalized.append({
                 "job_id":         job.get("job_id"),
                 "title":          (job.get("title")       or "").strip(),
                 "company":        (job.get("company")     or "").strip(),
                 "location":       (job.get("location")    or "").strip(),
                 "description":    (job.get("description") or "").strip(),
+                "salary":         salary,
                 "tags":           tags,
                 "mandatory_tags": tags[:2],   # site signals these as primary
                 "optional_tags":  tags[2:],
@@ -311,6 +320,9 @@ class JobFilterPipeline2:
                 continue
             clean.append(j)
         return clean
+
+    def salary_filter(self, jobs):
+        return jobs
 
     def tag_presort(self, jobs):
         my_stack = set(self.MY_STACK)

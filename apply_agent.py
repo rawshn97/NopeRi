@@ -28,6 +28,12 @@
 from src.client.naukri_client import NaukriLoginClient
 from src.client.job_client import NaukriJobClient
 from src.client.jop_classifier import JobFilterPipeline2
+from config.ba_salary import (
+    BA_MIN_LPA,
+    ba_salary_allows_apply,
+    is_business_analyst_title,
+    salary_text_from_job_details,
+)
 from src.exceptions.exceptions import NaukriAuthError, NaukriParseError, NaukriRecaptchaError
 from src.external_jobs import load_external_job_ids, log_external_skip
 from src.questionnaire_review import append_questionnaire_review, build_review_record
@@ -271,6 +277,8 @@ def print_job_header(index: int, total: int, job, score=None, ai_detail=None) ->
     print(THIN)
     print(f"  {Fore.WHITE}Title   :{Style.RESET_ALL}  {Style.BRIGHT}{job.title}{Style.RESET_ALL}")
     print(f"  {Fore.WHITE}Company :{Style.RESET_ALL}  {Fore.YELLOW}{job.company}{Style.RESET_ALL}")
+    salary = getattr(job, "salary", None) or "Not disclosed"
+    print(f"  {Fore.WHITE}Salary  :{Style.RESET_ALL}  {salary}")
     print(f"  {Fore.WHITE}Job ID  :{Style.RESET_ALL}  {Fore.BLUE}{job.job_id}{Style.RESET_ALL}")
     print(f"  {Fore.WHITE}URL     :{Style.RESET_ALL}  {Fore.BLUE}https://www.naukri.com/job-listings-{job.job_id}{Style.RESET_ALL}")
 
@@ -965,6 +973,26 @@ def apply_to_filtered_jobs(
             score=_job_score(meta),
             ai_detail=_job_ai_detail(meta),
         )
+
+        if is_business_analyst_title(job.title):
+            salary_text = job.salary
+            ok, reason = ba_salary_allows_apply(job.title, salary_text)
+            if not ok:
+                try:
+                    details = jc.get_job_details_cached(job.job_id)
+                    fetched = salary_text_from_job_details(details)
+                    if fetched and fetched != "Not disclosed":
+                        salary_text = fetched
+                        job.salary = fetched
+                        ok, reason = ba_salary_allows_apply(job.title, salary_text)
+                except Exception as salary_exc:
+                    reason = f"{reason}; details fetch failed ({salary_exc})"
+            if not ok:
+                print(
+                    f"  {Fore.YELLOW}Status  :  Skipped BA salary "
+                    f"({reason}; need >{BA_MIN_LPA:g} LPA){Style.RESET_ALL}"
+                )
+                continue
 
         if job.job_id in applied_jobs_set:
             print_status_skipped_already_applied()

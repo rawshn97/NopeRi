@@ -19,8 +19,9 @@ README in [Applying for Jobs](../Applying%20for%20Jobs/README.md) references **N
 
 | File | What |
 |------|------|
-| `config/rawshn_search.py` | PM titles, Hyderabad + Bangalore + Pune, exp levels 4→3→2→5→6 (no 1 YOE), 3 pages/query |
-| `config/rawshn_classifier.py` | PM stack scoring, relaxed experience filter |
+| `config/rawshn_search.py` | PM + Senior BA / BA titles, Hyderabad + Bangalore + Pune, exp levels 4→3→2→5→6 (no 1 YOE), adaptive pages |
+| `config/rawshn_classifier.py` | PM + BA scoring; BA not hard-vetoed; specific analyst vetoes only |
+| `config/ba_salary.py` | BA titles apply only if posted salary is **> 20 LPA** (undisclosed skipped at apply time) |
 | `config/profile_loader.py` | Loads `application-profile.yaml` for Q&A autofill |
 | `.env` | Naukri login + OpenRouter (gitignored) |
 | `run.sh` | venv, `USE_RAWSHN_CONFIG=1`, runs agent (no Drive resume fetch by default) |
@@ -43,6 +44,8 @@ When an employer prescreening form appears after Easy Apply:
 Update the yaml profile when compensation, notice, or narrative changes. Add prescreening overrides in `questionnaire_answers.yaml` (see Applying for Jobs profile). No code edits needed for routine updates.
 
 **Classifier veto:** Marketing Manager titles (including Associate/Digital variants) are hard-vetoed in `rawshn_classifier.py` (no marketing management experience).
+
+**BA salary gate:** Business Analyst titles (including Senior/Lead/Associate BA) apply only when posted salary is **strictly greater than 20 LPA**. Ranges apply if the ceiling is above 20 (e.g. 18-25 applies; 10-20 skips). Undisclosed BA salary is skipped after a job-details lookup. Product Manager titles are not salary-gated. Override floor with `BA_MIN_SALARY_LPA` (default `20`).
 
 ## Questionnaire review log
 

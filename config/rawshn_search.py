@@ -6,6 +6,8 @@ import os
 CITY_ORDER = ["Hyderabad", "Pune", "Bangalore"]
 
 PM_KEYWORDS = [
+    "Senior Business Analyst",
+    "Business Analyst",
     "Product Manager",
     "Senior Product Manager",
     "AI Product Manager",

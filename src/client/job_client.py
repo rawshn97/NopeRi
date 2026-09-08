@@ -146,13 +146,33 @@ class NaukriJobClient:
             (p["label"] for p in raw.get("placeholders", []) if p.get("type") == "location"),
             "N/A",
         )
+        salary = "Not disclosed"
+        for p in raw.get("placeholders") or []:
+            if p.get("type") == "salary" and p.get("label"):
+                salary = str(p["label"])
+                break
+        if salary == "Not disclosed":
+            detail = raw.get("salaryDetail") or raw.get("salary")
+            if isinstance(detail, dict):
+                salary = str(
+                    detail.get("label")
+                    or detail.get("salary")
+                    or (
+                        f"{detail.get('minimumSalary')}-{detail.get('maximumSalary')}"
+                        if detail.get("minimumSalary") or detail.get("maximumSalary")
+                        else "Not disclosed"
+                    )
+                )
+            elif isinstance(detail, str) and detail.strip():
+                salary = detail.strip()
+
         return Job(
             job_id=str(raw.get("jobId") or raw.get("id") or ""),
             title=raw.get("title") or raw.get("jobTitle") or "N/A",
             company=raw.get("companyName") or raw.get("company") or "N/A",
             location=location,
             experience=raw.get("experienceText") or raw.get("experience") or "N/A",
-            salary=raw.get("salaryDetail") or raw.get("salary") or "Not disclosed",
+            salary=salary,
             posted_date=raw.get("footerPlaceholderLabel") or raw.get("postedDate") or "N/A",
             apply_link=raw.get("jdURL") or f"https://www.naukri.com/job-listings-{raw.get('jobId', '')}",
             description=raw.get("jobDescription") or "",
