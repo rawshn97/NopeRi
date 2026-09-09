@@ -160,6 +160,8 @@ Reset the variation log to re-scan from scratch: `RESET_SEARCH_VARIATIONS=1 ./ru
 | `DAILY_APPLY_LIMIT` | Max jobs passed to apply loop after AI filter (auto-raised with targets) |
 | `NAUKRI_DAILY_QUOTA` | Naukri rolling 24h apply cap (default `50`); stop apply loop when reached |
 | `MIN_APPLY_SCORE` | AI apply threshold (default `50`; do not lower to force applies) |
+| `RAWSHN_PM_KEYWORDS` | Comma-separated search keywords (default prioritizes Product Manager, Product Owner) |
+| `RAWSHN_CITY_ORDER` | Comma-separated city priority (default `Hyderabad,Pune,Bangalore`) |
 | `SEARCH_VARIATION_STATE_PATH` | Override path for variation resume log (default `search_variation_state.json`) |
 | `RESET_SEARCH_VARIATIONS` | Set to `1` to clear variation log and re-scan from scratch |
 | `FETCH_RESUME_FROM_DRIVE` | Set to `1` to pull MP-CL from Drive before run (default off; Easy Apply still uses Naukri profile resume) |

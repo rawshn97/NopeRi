@@ -3,22 +3,30 @@
 import os
 
 # City priority: Hyderabad first, then Pune, then Bangalore (Naukri location labels)
-CITY_ORDER = ["Hyderabad", "Pune", "Bangalore"]
+_city_override = os.getenv("RAWSHN_CITY_ORDER", "").strip()
+if _city_override:
+    CITY_ORDER = [c.strip() for c in _city_override.split(",") if c.strip()]
+else:
+    CITY_ORDER = ["Hyderabad", "Pune", "Bangalore"]
 
-PM_KEYWORDS = [
-    "Senior Business Analyst",
-    "Business Analyst",
-    "Product Manager",
-    "Senior Product Manager",
-    "AI Product Manager",
-    "Technical Product Manager",
-    "Associate Product Manager",
-    "Product Management Specialist",
-    "Product Owner",
-    "Growth Product Manager",
-    "Implementation Product Manager",
-    "Platform Product Manager",
-]
+_kw_override = os.getenv("RAWSHN_PM_KEYWORDS", "").strip()
+if _kw_override:
+    PM_KEYWORDS = [k.strip() for k in _kw_override.split(",") if k.strip()]
+else:
+    PM_KEYWORDS = [
+        "Product Manager",
+        "Product Owner",
+        "Senior Product Manager",
+        "Technical Product Manager",
+        "Associate Product Manager",
+        "AI Product Manager",
+        "Growth Product Manager",
+        "Implementation Product Manager",
+        "Platform Product Manager",
+        "Product Management Specialist",
+        "Senior Business Analyst",
+        "Business Analyst",
+    ]
 
 # Legacy flat list (title x location); apply_agent uses nested sweep instead.
 BQUERIES = [
