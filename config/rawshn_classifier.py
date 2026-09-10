@@ -34,6 +34,11 @@ class JobFilterPipelinePM(JobFilterPipeline2):
         "engineering manager", "etl engineer", "prompt engineer",
         "sales manager", "account manager", "project manager",
         "marketing manager", "brand marketing manager", "digital marketing manager",
+        "success manager", "customer success", "client success", "csm",
+        "sales effectiveness", "sales enablement", "sales operations", "sales ops",
+        "sales executive", "account executive", "business development", "bd manager",
+        "relationship manager", "client relationship",
+        "operations manager", "service delivery manager", "general manager",
         "data analyst", "financial analyst", "equity analyst", "research analyst",
         "credit analyst", "risk analyst", "soc analyst", "security analyst",
         "associate is engineer", "infra engineer",
@@ -113,6 +118,7 @@ CANDIDATE:
 - Location: Hyderabad (open to Pune, Bengaluru, and remote India), immediate joiner
 - Target comp: ~24 LPA INR flexible
 - No marketing management experience; skip pure marketing manager roles
+- Not looking for Customer Success, Support, Sales Enablement, Sales Operations, Account Management, or non-product operations (these are NOT PM-adjacent; score 0-20)
 
 SCORING RUBRIC:
 
@@ -125,21 +131,23 @@ SCORING RUBRIC:
   Senior Business Analyst / Business Analyst in product, SaaS, tech, or enterprise systems
   Some stack overlap, exp 3-8 yrs
 
-55-74: Decent fit, lower priority
-  Generic "Manager" or mixed role but some PM/BA tags present
-  Business Analyst with partial domain overlap
+55-74: Marginal fit, lower priority
+  Product adjacent role with strong overlap, or BA with partial domain overlap
   Exp borderline (2 yrs min or 8+ yrs max)
 
-30-54: Weak fit, skip unless pipeline is thin
+30-54: Weak fit, skip
   Project manager, pure finance/risk/data analyst, or tech-heavy with little PM/BA signal
 
 0-29: Do not apply
+  Customer Success, Success Manager, Sales Effectiveness, Sales Enablement, Sales Ops, Account Management
   Pure engineering (Android, iOS, backend-only SDE), data science, sales, intern
   Walk-in, tutor, trainer, or zero PM/BA/domain overlap
 
 RULES:
 - "Product Manager" + HR tech / SaaS tags -> 85+
 - "Senior Business Analyst" or "Business Analyst" + product/SaaS/tech/requirements tags -> 70+
+- "Success Manager", "Customer Success", "Sales Effectiveness", "Sales Enablement", "Sales Ops" -> 0-20 (strictly DO NOT apply; NOT PM-adjacent)
+- Generic "Manager" or "Operations" titles without "Product", "Product Owner", or "Business Analyst" -> score <= 30
 - Pure data/finance/risk analyst (no business/product context) -> 15-35
 - "Project Manager" without product tags -> 20-40
 - Pure developer/engineer titles -> 0-15

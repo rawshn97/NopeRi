@@ -159,7 +159,7 @@ Reset the variation log to re-scan from scratch: `RESET_SEARCH_VARIATIONS=1 ./ru
 | `STRICT_EASY_APPLY` | Set to `1` to skip search results with no `easy_apply` flag (default `0`) |
 | `DAILY_APPLY_LIMIT` | Max jobs passed to apply loop after AI filter (auto-raised with targets) |
 | `NAUKRI_DAILY_QUOTA` | Naukri rolling 24h apply cap (default `50`); stop apply loop when reached |
-| `MIN_APPLY_SCORE` | AI apply threshold (default `50`; do not lower to force applies) |
+| `MIN_APPLY_SCORE` | AI apply threshold (default `70`; filters out marginal/non-PM roles) |
 | `RAWSHN_PM_KEYWORDS` | Comma-separated search keywords (default prioritizes Product Manager, Product Owner) |
 | `RAWSHN_CITY_ORDER` | Comma-separated city priority (default `Hyderabad,Pune,Bangalore`) |
 | `SEARCH_VARIATION_STATE_PATH` | Override path for variation resume log (default `search_variation_state.json`) |

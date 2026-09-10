@@ -184,7 +184,7 @@ def get_search_round_config() -> tuple[int, int]:
 def build_pipeline(ai_key: str):
     daily_limit = int(os.getenv("DAILY_APPLY_LIMIT", "50"))
     ai_score_limit = int(os.getenv("AI_SCORE_LIMIT", "300"))
-    min_apply_score = int(os.getenv("MIN_APPLY_SCORE", "50"))
+    min_apply_score = int(os.getenv("MIN_APPLY_SCORE", "70"))
     apply_target, min_apply, starting = parse_apply_targets()
     if os.getenv("EXHAUST_JOBS", "").strip().lower() in ("1", "true", "yes"):
         daily_limit = int(os.getenv("DAILY_APPLY_LIMIT", "999"))
