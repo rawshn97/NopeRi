@@ -524,7 +524,8 @@ def iter_search_jobs(
     """
     Yield lists of new (deduped) jobs after each search API call.
 
-    Rawshn nesting (outer to inner): title -> location -> experience -> freshness -> pages.
+    Rawshn nesting (outer to inner): freshness -> title -> location -> experience -> pages.
+    Fresher jobAge bands run first; older bands run only if the session goal is not met.
 
     Pagination is adaptive: keep requesting the next page while Naukri returns a full
     page (RESULTS_PER_PAGE, default 20). Stop early on a short/empty page, when an
@@ -592,8 +593,9 @@ def iter_search_jobs(
             * len(JOB_AGE_LEVELS)
         )
         print_section_title(
-            f"fetching jobs  ({len(PM_KEYWORDS)} titles x {len(CITY_ORDER)} cities "
-            f"x {len(EXPERIENCE_LEVELS)} exp x {len(JOB_AGE_LEVELS)} ages, "
+            f"fetching jobs  (freshness-first: {len(JOB_AGE_LEVELS)} age bands x "
+            f"{len(PM_KEYWORDS)} titles x {len(CITY_ORDER)} cities "
+            f"x {len(EXPERIENCE_LEVELS)} exp, "
             f"adaptive pages up to {max_pages} while full={RESULTS_PER_PAGE}; "
             f"~{combo_base}+ searches)"
         )
@@ -773,16 +775,22 @@ def iter_search_jobs(
                 break
 
     if use_rawshn:
-        for keyword in PM_KEYWORDS:
+        for age_idx, job_age in enumerate(JOB_AGE_LEVELS):
             if (should_stop and should_stop()) or _sweep_walled():
                 return
-            for city in CITY_ORDER:
+            if age_idx > 0:
+                print(
+                    f"\n  {Fore.CYAN}Freshness band age={job_age} days "
+                    f"(session goal not yet met; expanding beyond age="
+                    f"{JOB_AGE_LEVELS[age_idx - 1]}).{Style.RESET_ALL}"
+                )
+            for keyword in PM_KEYWORDS:
                 if (should_stop and should_stop()) or _sweep_walled():
                     return
-                for exp in EXPERIENCE_LEVELS:
+                for city in CITY_ORDER:
                     if (should_stop and should_stop()) or _sweep_walled():
                         return
-                    for job_age in JOB_AGE_LEVELS:
+                    for exp in EXPERIENCE_LEVELS:
                         if (should_stop and should_stop()) or _sweep_walled():
                             return
                         yield from _pager(keyword, city, exp, job_age)
@@ -1212,8 +1220,9 @@ if __name__ == "__main__":
             f"{var_summary['remaining_estimate']}"
         )
         print(
-            f"  {Fore.CYAN}Sweep uses all titles, cities, experience levels, and freshness days "
-            f"from config (no MIN_APPLY_SCORE override).{Style.RESET_ALL}"
+            f"  {Fore.CYAN}Sweep is freshness-first: age bands "
+            f"{JOB_AGE_LEVELS[0]}..{JOB_AGE_LEVELS[-1]} days, then titles, cities, exp "
+            f"(no MIN_APPLY_SCORE override).{Style.RESET_ALL}"
         )
 
     session_applied = 0

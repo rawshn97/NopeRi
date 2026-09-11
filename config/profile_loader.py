@@ -11,14 +11,14 @@ import yaml
 DEFAULT_PROFILE_PATH = Path(
     os.getenv(
         "APPLICATION_PROFILE_PATH",
-        "/Users/rawshn/Projects/Applying for Jobs/profile/application-profile.yaml",
+        "/Users/rawshn/Projects/interview-prep/profile/application-profile.yaml",
     )
 )
 
 DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH = Path(
     os.getenv(
         "QUESTIONNAIRE_OVERRIDES_PATH",
-        "/Users/rawshn/Projects/Applying for Jobs/profile/questionnaire_answers.yaml",
+        "/Users/rawshn/Projects/interview-prep/profile/questionnaire_answers.yaml",
     )
 )
 

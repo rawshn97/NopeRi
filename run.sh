@@ -18,11 +18,11 @@ pip install -q -r requirements.txt
 # Opt-in Drive fetch only when refreshing the profile PDF manually:
 #   FETCH_RESUME_FROM_DRIVE=1 ./run.sh
 if [[ "${FETCH_RESUME_FROM_DRIVE:-0}" == "1" ]]; then
-  FETCH_SCRIPT="/Users/rawshn/Projects/Applying for Jobs/Resume Workflow/scripts/fetch_resume_master.py"
+  FETCH_SCRIPT="/Users/rawshn/Projects/interview-prep/Resume Workflow/scripts/fetch_resume_master.py"
   if [[ -f "$FETCH_SCRIPT" ]]; then
     python3 "$FETCH_SCRIPT" --variant MP-CL || echo "Resume fetch skipped (check composio / Drive)" >&2
   fi
-  RESUME_PDF="/Users/rawshn/Projects/Applying for Jobs/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf"
+  RESUME_PDF="/Users/rawshn/Projects/interview-prep/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf"
   if [[ ! -f "$RESUME_PDF" ]]; then
     echo "Missing $RESUME_PDF - export PDF from MP-CL docx before uploading to Naukri." >&2
   fi
@@ -59,8 +59,8 @@ export MIN_APPLY_SCORE="${MIN_APPLY_SCORE:-70}"
 python apply_agent.py "$@"
 AGENT_EXIT=$?
 
-SYNC_SCRIPT="/Users/rawshn/Projects/Applying for Jobs/scripts/sync_noperi_notion.py"
-EXTERNAL_SYNC="/Users/rawshn/Projects/Applying for Jobs/scripts/sync_external_notion.py"
+SYNC_SCRIPT="/Users/rawshn/Projects/interview-prep/scripts/sync_noperi_notion.py"
+EXTERNAL_SYNC="/Users/rawshn/Projects/interview-prep/scripts/sync_external_notion.py"
 if [[ -f "$SYNC_SCRIPT" ]]; then
   export SSL_CERT_FILE="${SSL_CERT_FILE:-$(python3 -c 'import certifi; print(certifi.where())' 2>/dev/null)}"
   python3 "$SYNC_SCRIPT" || echo "Notion sync skipped (check NOTION_TOKEN)" >&2

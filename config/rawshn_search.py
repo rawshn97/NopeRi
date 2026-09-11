@@ -35,7 +35,8 @@ BQUERIES = [
     for city in CITY_ORDER
 ]
 
-# Sweep order in apply_agent: titles -> location -> experience -> job age -> pages
+# Sweep order in apply_agent: job age (fresh first) -> titles -> location -> experience -> pages.
+# Complete each fresher age band before expanding to the next older band (unless session goal met).
 # Skip exp=1: almost no PM listings ask for 1 YOE.
 # Override: RAWSHN_EXPERIENCE_LEVELS=4,3,2 (comma-separated integers)
 _exp_override = os.getenv("RAWSHN_EXPERIENCE_LEVELS", "").strip()
@@ -69,7 +70,9 @@ if _job_age_override:
     JOB_AGE = int(_job_age_override)
     JOB_AGE_LEVELS = [JOB_AGE]
 elif _job_age_levels_override:
-    JOB_AGE_LEVELS = [int(x.strip()) for x in _job_age_levels_override.split(",") if x.strip()]
+    JOB_AGE_LEVELS = sorted(
+        int(x.strip()) for x in _job_age_levels_override.split(",") if x.strip()
+    )
     JOB_AGE = JOB_AGE_LEVELS[0]
 else:
     JOB_AGE_LEVELS = [3, 4, 5, 6, 7]

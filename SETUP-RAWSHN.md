@@ -13,7 +13,7 @@ Official repo: [Traverser25/NopeRi](https://github.com/Traverser25/NopeRi)
 
 ## Why this repo
 
-README in [Applying for Jobs](../Applying%20for%20Jobs/README.md) references **NopeRi** by name. [Traverser25/NopeRi](https://github.com/Traverser25/NopeRi) is a Selenium-free Python API client with an `apply_agent.py` AI workflow (last tested Jun 2026 per upstream).
+README in [Interview Prep](../interview-prep/README.md) references **NopeRi** by name. [Traverser25/NopeRi](https://github.com/Traverser25/NopeRi) is a Selenium-free Python API client with an `apply_agent.py` AI workflow (last tested Jun 2026 per upstream).
 
 ## Config (Rawshn overrides)
 
@@ -34,14 +34,14 @@ When an employer prescreening form appears after Easy Apply:
 
 **Easy Apply vs external (API savings):** Search results include `jobTypeFlags` (look for `easy_apply`) and sometimes `responseManager`. Jobs flagged external, or already in `external_jobs.jsonl`, are dropped **before AI scoring**. At submit time NopeRi calls the apply API once and checks the response for redirect URLs (no double `get_job_details` pre-check). Probe flag coverage: `python3 scripts/probe_search_apply_flags.py`. Optional `STRICT_EASY_APPLY=1` skips jobs with no search flag (aggressive).
 
-1. **Profile source:** `~/Projects/Applying for Jobs/profile/application-profile.yaml` (override with `APPLICATION_PROFILE_PATH`).
+1. **Profile source:** `~/Projects/interview-prep/profile/application-profile.yaml` (override with `APPLICATION_PROFILE_PATH`).
 2. **Static rules first:** CTC (24 LPA / 2400000 INR expected, 0 current; auto-detects lacs vs INR from question text), notice (0 / immediate), YOE (6 total, 3 product; domain overrides for B2C/e-commerce/NPD=3, marketing/pricing/packaging=0), relocation Yes, city Hyderabad, email, phone, gap reason, tell-me-about-yourself.
 3. **JD context:** Fetches full job details via `get_job_details()` (title, tags, description).
 4. **AI fallback:** OpenRouter (`OPENROUTER_API_KEY` or `OPEN_API_KEY`) answers unknown text/select questions using GodsScion-style prompt + profile context.
 5. **Select/radio:** AI returns an option label; matcher maps it to Naukri `answerOption` key.
 6. **Safety:** Low-confidence answers skip submit and log Q&A to `questionnaire_review.jsonl` for your review.
 
-Update the yaml profile when compensation, notice, or narrative changes. Add prescreening overrides in `questionnaire_answers.yaml` (see Applying for Jobs profile). No code edits needed for routine updates.
+Update the yaml profile when compensation, notice, or narrative changes. Add prescreening overrides in `questionnaire_answers.yaml` (see Interview Prep profile). No code edits needed for routine updates.
 
 **Classifier veto:** Marketing Manager titles (including Associate/Digital variants) are hard-vetoed in `rawshn_classifier.py` (no marketing management experience).
 
@@ -57,7 +57,7 @@ One JSON object per job/questionnaire event. Fields: `job_id`, `title`, `company
 
 **Review workflow:** open the JSONL file, note wrong answers, then either:
 
-1. Add overrides to `~/Projects/Applying for Jobs/profile/questionnaire_answers.yaml`, or
+1. Add overrides to `~/Projects/interview-prep/profile/questionnaire_answers.yaml`, or
 2. Tell the agent which questions need different answers (paste job_id + corrections).
 
 Backfill past terminal captures:
@@ -88,7 +88,7 @@ from src.client.naukri_client import NaukriLoginClient
 import os
 from dotenv import load_dotenv
 load_dotenv()
-pdf = Path('~/Projects/Applying for Jobs/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf').expanduser()
+pdf = Path('~/Projects/interview-prep/Resume Workflow/workspace/Roshan Raj Mishra - MP.pdf').expanduser()
 c = NaukriLoginClient(os.environ['USERNAME'], os.environ['PASSWORD'])
 c.login()
 c.update_resume(str(pdf))
@@ -126,13 +126,13 @@ Both together (session goal uses whichever is larger):
 APPLY_TARGET=100 MIN_APPLY_COUNT=68 ./run.sh
 ```
 
-**What counts toward 100:** only successful **Naukri Easy Apply** submissions written to `applied_jobs.csv`. **External apply** jobs (company site redirect) are skipped by the agent, logged to `external_jobs.jsonl`, and synced to Notion with **Job Status: Opening** (see `~/Projects/Applying for Jobs/scripts/sync_external_notion.py`). Dedup skips jobs already in CSV.
+**What counts toward 100:** only successful **Naukri Easy Apply** submissions written to `applied_jobs.csv`. **External apply** jobs (company site redirect) are skipped by the agent, logged to `external_jobs.jsonl`, and synced to Notion with **Job Status: Opening** (see `~/Projects/interview-prep/scripts/sync_external_notion.py`). Dedup skips jobs already in CSV.
 
-**Search expansion:** Rawshn sweeps Naukri in nested order: **titles → location → experience → freshness → pages** (title changes last). Easy Apply jobs are classified and applied **per search chunk** as found (no full-sweep wait). Default: 10 PM titles × 3 cities (Hyderabad, Pune, Bangalore) × 5 experience levels (`4,3,2,5,6`; exp=1 omitted) × 5 freshness days (`3,4,5,6,7`). **Adaptive pages:** keep requesting the next page while Naukri returns a full page (`20` results); stop on a short/empty page, when a page is all duplicates (`20 fetched 0 new`), or past-end `pageNo` (no more noisy 400 FAILs). Hard cap `RAWSHN_MAX_PAGES` (default `6`). Zero-new stop is on by default (`RAWSHN_STOP_ON_ZERO_NEW=1`). Up to **4 search rounds** until `MIN_APPLY_COUNT` / `APPLY_TARGET` is met, listings dry up, or the round cap is hit. Override with `RAWSHN_MAX_PAGES=10`, `RAWSHN_STOP_ON_ZERO_NEW=0`, `RAWSHN_SEARCH_ROUNDS=4`, `RAWSHN_EXPERIENCE_LEVELS=4,3`, `RAWSHN_JOB_AGE_LEVELS=3,5,7`, or `RAWSHN_JOB_AGE=5` (single age, disables freshness cycling).
+**Search expansion:** Rawshn sweeps Naukri **freshness-first**: **age → titles → location → experience → pages**. It completes the freshest band (`age=3` days) across all title/city/exp combos before expanding to `age=4`, then `5`, `6`, `7` only if the session apply goal is not met. Easy Apply jobs are classified and applied **per search chunk** as found (no full-sweep wait). Default: 5 freshness bands (`3,4,5,6,7`) × 12 PM/BA titles × 3 cities (Hyderabad, Pune, Bangalore) × 5 experience levels (`4,3,2,5,6`; exp=1 omitted). **Adaptive pages:** keep requesting the next page while Naukri returns a full page (`20` results); stop on a short/empty page, when a page is all duplicates (`20 fetched 0 new`), or past-end `pageNo` (no more noisy 400 FAILs). Hard cap `RAWSHN_MAX_PAGES` (default `6`). Zero-new stop is on by default (`RAWSHN_STOP_ON_ZERO_NEW=1`). Up to **4 search rounds** until `MIN_APPLY_COUNT` / `APPLY_TARGET` is met, listings dry up, or the round cap is hit. Override with `RAWSHN_MAX_PAGES=10`, `RAWSHN_STOP_ON_ZERO_NEW=0`, `RAWSHN_SEARCH_ROUNDS=4`, `RAWSHN_EXPERIENCE_LEVELS=4,3`, `RAWSHN_JOB_AGE_LEVELS=3,7,15`, or `RAWSHN_JOB_AGE=7` (single max age, no band expansion).
 
 **EXHAUST_JOBS** (`EXHAUST_JOBS=1`, default on in `.env`): keep expanding through all search rounds instead of stopping after one pass; also raises `DAILY_APPLY_LIMIT` to 999 and `AI_SCORE_LIMIT` to 500 so more listings get scored and applied per round. Pair with `MIN_APPLY_COUNT` or `APPLY_TARGET` to stop once the session goal is met.
 
-**Search variation resume:** Each title×city×exp×age×page API call is logged to `~/Projects/NopeRi/search_variation_state.json`. The next run **skips already-tried variations** and continues the sweep. Use the full config defaults (all freshness days via `JOB_AGE_LEVELS`; do **not** pass `RAWSHN_JOB_AGE=5` unless you want a single age). **Do not** lower `MIN_APPLY_SCORE` (default `50`) to force applies; exhaust the variation space instead.
+**Search variation resume:** Each title×city×exp×age×page API call is logged to `~/Projects/NopeRi/search_variation_state.json`. The next run **skips already-tried variations** and continues the sweep (still freshness-first). Use the full config defaults (all freshness bands via `JOB_AGE_LEVELS`; do **not** pass `RAWSHN_JOB_AGE=7` unless you want a single max age with no band expansion). **Do not** lower `MIN_APPLY_SCORE` (default `50`) to force applies; exhaust the variation space instead.
 
 Backfill state from prior tee logs:
 
@@ -183,7 +183,7 @@ python apply_agent.py
 | `OPEN_API_KEY` | Alt* | Direct OpenAI key instead of OpenRouter |
 | `OPENAI_API_BASE` | No | Default `https://openrouter.ai/api/v1/chat/completions` in `run.sh` |
 | `OPENAI_MODEL` | No | Default `google/gemini-2.5-flash-lite` |
-| `APPLICATION_PROFILE_PATH` | No | Default `~/Projects/Applying for Jobs/profile/application-profile.yaml` |
+| `APPLICATION_PROFILE_PATH` | No | Default `~/Projects/interview-prep/profile/application-profile.yaml` |
 | `APPLY_TARGET` | No | Cumulative Easy Apply rows in CSV to reach (e.g. `100`) |
 | `MIN_APPLY_COUNT` | No | Minimum new applies this session |
 | `RAWSHN_PAGES` | No | Legacy seed (adaptive paging uses `RAWSHN_MAX_PAGES`) |
@@ -208,10 +208,10 @@ After each run, `run.sh` syncs new rows to the **Notion Job Application Tracker*
 Manual sync anytime:
 
 ```bash
-python3 ~/Projects/Applying\ for\ Jobs/scripts/sync_noperi_notion.py
+python3 ~/Projects/interview-prep/scripts/sync_noperi_notion.py
 ```
 
-Dry run: add `--dry-run`. State file: `~/Projects/Applying for Jobs/runs/noperi-notion-synced.json`.
+Dry run: add `--dry-run`. State file: `~/Projects/interview-prep/runs/noperi-notion-synced.json`.
 
 ## Safety / hosting notes (from upstream)
 
@@ -229,6 +229,6 @@ Dry run: add `--dry-run`. State file: `~/Projects/Applying for Jobs/runs/noperi-
 
 ## Related
 
-- [Applying for Jobs README](../Applying%20for%20Jobs/README.md)
+- [Interview Prep README](../interview-prep/README.md)
 - [GodsScion LinkedIn setup](../Auto_job_applier_linkedIn/SETUP-RAWSHN.md)
-- [application-profile.yaml](../Applying%20for%20Jobs/profile/application-profile.yaml)
+- [application-profile.yaml](../interview-prep/profile/application-profile.yaml)
