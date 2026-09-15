@@ -539,6 +539,7 @@ def iter_search_jobs(
             EXPERIENCE_LEVELS,
             JOB_AGE_LEVELS,
             MAX_PAGES_PER_QUERY,
+            MIN_NEW_TO_CONTINUE,
             PM_KEYWORDS,
             RESULTS_PER_PAGE,
             STOP_ON_ZERO_NEW,
@@ -554,6 +555,7 @@ def iter_search_jobs(
         EXPERIENCE_LEVELS = [2]
         JOB_AGE_LEVELS = [2]
         MAX_PAGES_PER_QUERY = 5
+        MIN_NEW_TO_CONTINUE = 1
         RESULTS_PER_PAGE = 20
         STOP_ON_ZERO_NEW = os.getenv("RAWSHN_STOP_ON_ZERO_NEW", "1").strip().lower() not in (
             "0",
@@ -563,6 +565,7 @@ def iter_search_jobs(
 
     # Adaptive stop + MAX_PAGES_PER_QUERY control depth (`pages` arg kept for call-site compat).
     max_pages = max(1, MAX_PAGES_PER_QUERY)
+    min_new_to_continue = max(1, MIN_NEW_TO_CONTINUE)
     search_delay = float(os.getenv("NAUKRI_SEARCH_DELAY", "3"))
 
     # Recaptcha wall handling: 406-after-retries means Naukri is rate-limiting
@@ -625,6 +628,11 @@ def iter_search_jobs(
                 and entry.get("new", 0) == 0
             ):
                 keep_going = False
+            elif (
+                entry.get("fetched", 0) > 0
+                and entry.get("new", 0) < min_new_to_continue
+            ):
+                keep_going = False
             if variation_verbose:
                 print(
                     f"  {Fore.WHITE}[SKIP]{Style.RESET_ALL}   "
@@ -666,6 +674,13 @@ def iter_search_jobs(
                     f"  {Fore.WHITE}[DEDUP]{Style.RESET_ALL}   "
                     f"{keyword} | {location or 'All India'} | exp={exp} | age={job_age} | p{page}"
                     f"  (all duplicates; stop paging combo)"
+                )
+            elif fetched > 0 and len(new_jobs) < min_new_to_continue:
+                keep_going = False
+                print(
+                    f"  {Fore.WHITE}[LOW-YIELD]{Style.RESET_ALL} "
+                    f"{keyword} | {location or 'All India'} | exp={exp} | age={job_age} | p{page}"
+                    f"  ({len(new_jobs)} new < threshold {min_new_to_continue}; stop paging combo)"
                 )
             if variation_state is not None:
                 record_variation(

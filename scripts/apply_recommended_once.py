@@ -31,6 +31,9 @@ def main() -> int:
     username = os.getenv("USERNAME")
     password = os.getenv("PASSWORD")
     ai_key = os.getenv("OPEN_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+    if not ai_key:
+        print(f"  {Fore.YELLOW}No OpenRouter/API key found; running unscored (no AI classifier).{Style.RESET_ALL}")
+        ai_key = None
 
     aa.print_section_title("logging in to naukri (recommended feed)")
     client = NaukriLoginClient(username, password)
