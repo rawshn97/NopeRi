@@ -53,6 +53,7 @@ from dotenv import load_dotenv
 from colorama import Fore, Back, Style, init
 import os
 import time
+import random
 import csv
 import logging
 from datetime import datetime, timedelta, timezone
@@ -567,6 +568,28 @@ def iter_search_jobs(
     max_pages = max(1, MAX_PAGES_PER_QUERY)
     min_new_to_continue = max(1, MIN_NEW_TO_CONTINUE)
     search_delay = float(os.getenv("NAUKRI_SEARCH_DELAY", "3"))
+    search_delay_min = float(os.getenv("NAUKRI_SEARCH_DELAY_MIN", str(search_delay)))
+    search_delay_max = float(
+        os.getenv("NAUKRI_SEARCH_DELAY_MAX", str(max(search_delay_min + 3.0, 6.0)))
+    )
+    batch_size = int(os.getenv("NAUKRI_BATCH_SIZE", "8"))
+    batch_pause = float(os.getenv("NAUKRI_BATCH_PAUSE", "20.0"))
+    searches_since_pause = 0
+
+    def _sleep_search_jitter() -> None:
+        nonlocal searches_since_pause
+        searches_since_pause += 1
+        if batch_size > 0 and searches_since_pause >= batch_size:
+            searches_since_pause = 0
+            pause_s = round(random.uniform(batch_pause * 0.8, batch_pause * 1.2), 1)
+            print(
+                f"  {Fore.CYAN}[PACING]{Style.RESET_ALL}   "
+                f"batch of {batch_size} queries reached; pausing {pause_s}s (anti-bot cooldown)..."
+            )
+            time.sleep(pause_s)
+        else:
+            sleep_s = round(random.uniform(search_delay_min, search_delay_max), 1)
+            time.sleep(sleep_s)
 
     # Recaptcha wall handling: 406-after-retries means Naukri is rate-limiting
     # this IP/session. Cool down instead of burning every combo, and give up on
@@ -699,7 +722,7 @@ def iter_search_jobs(
                 )
                 variation_stats["tried"] += 1
             recaptcha_state["consecutive"] = 0
-            time.sleep(search_delay)
+            _sleep_search_jitter()
             return new_jobs, keep_going, fetched, False
 
         except NaukriRecaptchaError:
@@ -747,7 +770,7 @@ def iter_search_jobs(
                         search_round=search_round,
                     )
                     variation_stats["tried"] += 1
-                time.sleep(search_delay)
+                _sleep_search_jitter()
                 return [], False, 0, False
             print(
                 f"  {Fore.RED}[FAIL]{Style.RESET_ALL}  "
@@ -769,7 +792,7 @@ def iter_search_jobs(
                     search_round=search_round,
                 )
                 variation_stats["tried"] += 1
-            time.sleep(search_delay)
+            _sleep_search_jitter()
             # Transient search errors: stop this combo (don't hammer empty deeper pages).
             return [], False, 0, False
 
@@ -1152,7 +1175,8 @@ def apply_to_filtered_jobs(
 
         if quota_hit:
             break
-        time.sleep(3)
+        apply_delay = round(random.uniform(3.0, 6.0), 1)
+        time.sleep(apply_delay)
 
     return applied_count, skipped_ext, skipped_already, failed_count, quota_hit
 
