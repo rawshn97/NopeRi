@@ -34,18 +34,14 @@ if [[ -f "$LOCAL_ENV" ]]; then
   # shellcheck disable=SC1090
   source "$LOCAL_ENV"
   set +a
-  if [[ -n "${XAI_API_KEY:-}" ]]; then
-    export OPEN_API_KEY="$XAI_API_KEY"
-    export OPENAI_API_BASE="${OPENAI_API_BASE:-https://api.x.ai/v1/chat/completions}"
-    export OPENAI_MODEL="${OPENAI_MODEL:-grok-2-mini}"
-  elif [[ -n "${OPENROUTER_API_KEY:-}" && -z "${OPEN_API_KEY:-}" ]]; then
+  if [[ -n "${OPENROUTER_API_KEY:-}" && -z "${OPEN_API_KEY:-}" ]]; then
     export OPEN_API_KEY="$OPENROUTER_API_KEY"
   fi
 fi
 
 export USE_RAWSHN_CONFIG=1
 export OPENAI_API_BASE="${OPENAI_API_BASE:-https://openrouter.ai/api/v1/chat/completions}"
-export OPENAI_MODEL="${OPENAI_MODEL:-x-ai/grok-4.3}"
+export OPENAI_MODEL="${OPENAI_MODEL:-google/gemini-2.5-flash-lite}"
 export MIN_APPLY_SCORE="${MIN_APPLY_SCORE:-70}"
 
 # Apply volume (optional; set before ./run.sh):
