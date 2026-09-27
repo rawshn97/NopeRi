@@ -41,7 +41,7 @@ fi
 
 export USE_RAWSHN_CONFIG=1
 export OPENAI_API_BASE="${OPENAI_API_BASE:-https://openrouter.ai/api/v1/chat/completions}"
-export OPENAI_MODEL="${OPENAI_MODEL:-google/gemini-2.5-flash-lite}"
+export OPENAI_MODEL="${OPENAI_MODEL:-x-ai/grok-4.3}"
 export MIN_APPLY_SCORE="${MIN_APPLY_SCORE:-70}"
 
 # Apply volume (optional; set before ./run.sh):
