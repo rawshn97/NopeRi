@@ -34,7 +34,11 @@ if [[ -f "$LOCAL_ENV" ]]; then
   # shellcheck disable=SC1090
   source "$LOCAL_ENV"
   set +a
-  if [[ -n "${OPENROUTER_API_KEY:-}" && -z "${OPEN_API_KEY:-}" ]]; then
+  if [[ -n "${XAI_API_KEY:-}" ]]; then
+    export OPEN_API_KEY="$XAI_API_KEY"
+    export OPENAI_API_BASE="${OPENAI_API_BASE:-https://api.x.ai/v1/chat/completions}"
+    export OPENAI_MODEL="${OPENAI_MODEL:-grok-2-mini}"
+  elif [[ -n "${OPENROUTER_API_KEY:-}" && -z "${OPEN_API_KEY:-}" ]]; then
     export OPEN_API_KEY="$OPENROUTER_API_KEY"
   fi
 fi
