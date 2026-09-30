@@ -14,7 +14,7 @@ from src.client.naukri_client import NaukriLoginClient
 from src.exceptions.exceptions import NaukriAuthError, NaukriParseError, NaukriRecaptchaError
 from src.utils.request_helper import with_exponential_retry
 from src.utils.nkparam_generator import generate_nkparam
-from src.config.constants import RECOMMENDED_JOBS_URL, JOB_SEARCH_URL, APPLY_JOB_URL
+from src.config.constants import RECOMMENDED_JOBS_URL, JOB_SEARCH_URL, APPLY_JOB_URL,HISTORY_URL
 import json
 
 from config.profile_loader import load_application_profile

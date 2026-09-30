@@ -48,9 +48,11 @@ def classify_search_apply_mode(raw: dict) -> bool | None:
     return None
 
 
-def is_external_job_details(details: dict) -> bool:
-    job = details.get("job") or {}
-    return job.get("responseManager") == "companyUrl"
+def is_external_job_details(details: dict | None) -> bool:
+    if not isinstance(details, dict):
+        return False
+    job = details.get("job")
+    return isinstance(job, dict) and job.get("responseManager") == "companyUrl"
 
 
 def external_url_from_job_details(details: dict, job_id: str) -> str | None:
