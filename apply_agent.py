@@ -30,8 +30,9 @@ from src.client.job_client import NaukriJobClient
 from src.client.jop_classifier import JobFilterPipeline2
 from config.ba_salary import (
     BA_MIN_LPA,
+    MIN_SALARY_LPA,
     ba_salary_allows_apply,
-    is_business_analyst_title,
+    salary_allows_apply,
     salary_text_from_job_details,
 )
 from src.exceptions.exceptions import NaukriAuthError, NaukriParseError, NaukriRecaptchaError
@@ -1030,25 +1031,24 @@ def apply_to_filtered_jobs(
             ai_detail=_job_ai_detail(meta),
         )
 
-        if is_business_analyst_title(job.title):
-            salary_text = job.salary
-            ok, reason = ba_salary_allows_apply(job.title, salary_text)
-            if not ok:
-                try:
-                    details = jc.get_job_details_cached(job.job_id)
-                    fetched = salary_text_from_job_details(details)
-                    if fetched and fetched != "Not disclosed":
-                        salary_text = fetched
-                        job.salary = fetched
-                        ok, reason = ba_salary_allows_apply(job.title, salary_text)
-                except Exception as salary_exc:
-                    reason = f"{reason}; details fetch failed ({salary_exc})"
-            if not ok:
-                print(
-                    f"  {Fore.YELLOW}Status  :  Skipped BA salary "
-                    f"({reason}; need >{BA_MIN_LPA:g} LPA){Style.RESET_ALL}"
-                )
-                continue
+        salary_text = job.salary
+        ok, reason = salary_allows_apply(job.title, salary_text)
+        if not ok:
+            try:
+                details = jc.get_job_details_cached(job.job_id)
+                fetched = salary_text_from_job_details(details)
+                if fetched and fetched != "Not disclosed":
+                    salary_text = fetched
+                    job.salary = fetched
+                    ok, reason = salary_allows_apply(job.title, salary_text)
+            except Exception as salary_exc:
+                reason = f"{reason}; details fetch failed ({salary_exc})"
+        if not ok:
+            print(
+                f"  {Fore.YELLOW}Status  :  Skipped salary floor "
+                f"({reason}; need >{MIN_SALARY_LPA:g} LPA){Style.RESET_ALL}"
+            )
+            continue
 
         if job.job_id in applied_jobs_set:
             print_status_skipped_already_applied()

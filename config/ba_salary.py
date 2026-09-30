@@ -1,7 +1,6 @@
-"""Business Analyst salary gate for NopeRi.
+"""Salary floor gate for NopeRi.
 
-Apply to BA titles only when posted salary is strictly greater than 20 LPA.
-Product Manager and other non-BA titles are not gated.
+Applies salary floor checking to all job listings.
 """
 
 from __future__ import annotations
@@ -10,7 +9,16 @@ import os
 import re
 from typing import Any
 
-BA_MIN_LPA = float(os.getenv("BA_MIN_SALARY_LPA", "20"))
+MIN_SALARY_LPA = float(
+    os.getenv("MIN_SALARY_LPA", os.getenv("BA_MIN_SALARY_LPA", "20"))
+)
+BA_MIN_LPA = MIN_SALARY_LPA
+
+ALLOW_UNDISCLOSED_SALARY = os.getenv("ALLOW_UNDISCLOSED_SALARY", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 _BA_TITLE_RE = re.compile(
     r"\bbusiness\s+analyst\b"
@@ -94,20 +102,23 @@ def parse_salary_lpa(text: Any) -> tuple[float | None, float | None]:
     return min(nums[0], nums[1]), max(nums[0], nums[1])
 
 
-def ba_salary_allows_apply(title: str | None, salary: Any) -> tuple[bool, str]:
-    """Whether this listing may be applied to under the BA salary rule."""
-    if not is_business_analyst_title(title):
-        return True, "not-ba"
+def salary_allows_apply(title: str | None, salary: Any) -> tuple[bool, str]:
+    """Whether this listing may be applied to under the salary floor rule (any role)."""
     min_lpa, max_lpa = parse_salary_lpa(salary)
     ceiling = max_lpa if max_lpa is not None else min_lpa
     label = str(salary).strip() if salary not in (None, "") else "Not disclosed"
     if isinstance(salary, dict):
         label = str(salary.get("label") or salary)
     if ceiling is None:
-        return False, f"{label} (undisclosed; need >{BA_MIN_LPA:g} LPA)"
-    if ceiling > BA_MIN_LPA:
-        return True, f"{label} (>{BA_MIN_LPA:g} LPA)"
-    return False, f"{label} (need >{BA_MIN_LPA:g} LPA)"
+        if ALLOW_UNDISCLOSED_SALARY:
+            return True, f"{label} (undisclosed, permitted)"
+        return False, f"{label} (undisclosed; need >{MIN_SALARY_LPA:g} LPA)"
+    if ceiling > MIN_SALARY_LPA:
+        return True, f"{label} (>{MIN_SALARY_LPA:g} LPA)"
+    return False, f"{label} (need >{MIN_SALARY_LPA:g} LPA)"
+
+
+ba_salary_allows_apply = salary_allows_apply
 
 
 def salary_label_from_raw(raw: dict | None) -> str:

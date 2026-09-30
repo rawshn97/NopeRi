@@ -5,7 +5,7 @@ import re
 
 import requests
 
-from config.ba_salary import BA_MIN_LPA, is_business_analyst_title, parse_salary_lpa
+from config.ba_salary import MIN_SALARY_LPA, parse_salary_lpa
 from config.profile_loader import load_application_profile
 from src.client.jop_classifier import JobFilterPipeline2
 
@@ -66,18 +66,16 @@ class JobFilterPipelinePM(JobFilterPipeline2):
         ]
 
     def salary_filter(self, jobs):
-        # BA titles: drop listings whose posted ceiling is below BA_MIN_LPA.
+        # Drop listings whose posted ceiling is below MIN_SALARY_LPA across all roles.
+        # Undisclosed salary listings stay in pipeline; apply_agent re-checks job details.
         clean = []
         for j in jobs:
-            if not is_business_analyst_title(j.get("title")):
-                clean.append(j)
-                continue
             min_lpa, max_lpa = parse_salary_lpa(j.get("salary"))
             ceiling = max_lpa if max_lpa is not None else min_lpa
-            if ceiling is not None and ceiling <= BA_MIN_LPA:
+            if ceiling is not None and ceiling <= MIN_SALARY_LPA:
                 print(
-                    f"  [BA SALARY SKIP] {j.get('title')} | {j.get('salary')} "
-                    f"| need >{BA_MIN_LPA:g} LPA"
+                    f"  [SALARY SKIP] {j.get('title')} | {j.get('salary')} "
+                    f"| need >{MIN_SALARY_LPA:g} LPA"
                 )
                 continue
             clean.append(j)

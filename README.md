@@ -36,8 +36,9 @@ The upstream repository provides foundational low-level REST client capabilities
    - Captures skipped questions with confidence scores and context.
    - Enables human-in-the-loop review: add answers to `questionnaire_answers.yaml` and re-run.
 
-7. **Salary Floor Gating (`config/ba_salary.py`):**
-   - Filters Business Analyst roles below a configurable LPA floor (`BA_MIN_SALARY_LPA`, default 20 LPA), ensuring applications meet target compensation.
+7. **Role-Agnostic Salary Floor Gating (`config/ba_salary.py`):**
+   - Enforces a configurable minimum salary threshold (`MIN_SALARY_LPA`, default 20 LPA) across all roles, preventing applications to low-comp listings.
+   - Supports `ALLOW_UNDISCLOSED_SALARY=1` to permit listings where compensation is confidential or unstated.
 
 8. **24-Hour Rolling Quota Enforcement:**
    - Automatically tracks applications against Naukri's official rolling 24-hour limit of 50 Easy Applies, stopping gracefully when reached.
@@ -166,7 +167,8 @@ All settings can be customized via `.env` or passed inline before `./run.sh`:
 | `MAX_PAGES` | `2` | Hard cap on pages per search variation |
 | `STOP_ON_ZERO_NEW` | `1` | Stop paging when a page returns zero new jobs |
 | `RESET_SEARCH_VARIATIONS` | `0` | Set to `1` to clear variation history and re-scan from scratch |
-| `BA_MIN_SALARY_LPA` | `20` | Minimum salary threshold for Business Analyst titles |
+| `MIN_SALARY_LPA` | `20` | Minimum salary threshold in LPA across all roles |
+| `ALLOW_UNDISCLOSED_SALARY` | `0` | Set to `1` to permit listings with undisclosed or confidential salary |
 
 ---
 
