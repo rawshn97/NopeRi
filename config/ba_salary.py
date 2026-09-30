@@ -1,4 +1,4 @@
-"""Business Analyst salary gate for NopeRi (Rawshn).
+"""Business Analyst salary gate for NopeRi.
 
 Apply to BA titles only when posted salary is strictly greater than 20 LPA.
 Product Manager and other non-BA titles are not gated.

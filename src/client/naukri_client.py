@@ -18,41 +18,41 @@ logger.addHandler(_handler)
 
 
 # ------------------------------------------------------------------
-# IMPORTANT — IP / HOSTING ADVICE (read before deploying)
+# IMPORTANT - IP / HOSTING ADVICE (read before deploying)
 #################################
 # Naukri actively fingerprints the IP of every login and API request.
 # Through testing, certain hosting environments consistently trigger
 # MFA challenges or outright bans:
 #
 #   AVOID:
-#     - Microsoft Azure (any region)     → flagged heavily, MFA on first req
-#     - GitHub Actions / CI runners      → Azure-backed IPs, same result
-#     - Google Cloud (some regions)      → increasingly flagged
-#     - Any datacenter IP on known CIDR  → Naukri blocks entire ranges
+#    - Microsoft Azure (any region)     → flagged heavily, MFA on first req
+#    - GitHub Actions / CI runners      → Azure-backed IPs, same result
+#    - Google Cloud (some regions)      → increasingly flagged
+#    - Any datacenter IP on known CIDR  → Naukri blocks entire ranges
 #
 #   WORKS RELIABLY:
-#     - AWS (residential NAT gateway or EC2 with Elastic IP)
-#     - Home broadband / personal IP     → most reliable, zero flags
-#     - Mobile hotspot                   → works, good for testing
-#     - Residential proxy                → works if clean IP
+#    - AWS (residential NAT gateway or EC2 with Elastic IP)
+#    - Home broadband / personal IP     → most reliable, zero flags
+#    - Mobile hotspot                   → works, good for testing
+#    - Residential proxy                → works if clean IP
 #
 # WHY:
 #   Naukri's fraud/bot detection checks whether the IP belongs to a
 #   known cloud/datacenter ASN. Azure and GitHub Actions share the
-#   same Microsoft AS8075 IP ranges — Naukri recognises these
+#   same Microsoft AS8075 IP ranges - Naukri recognises these
 #   immediately and forces MFA, effectively breaking any headless
 #   client. AWS consumer-facing IPs (especially us-east-1 NAT) are
 #   less aggressively flagged, but a home server or residential IP
 #   is the gold standard.
 #
 # RECOMMENDATION FOR AGENTS / SCHEDULED WORKERS:
-#   - Run the harvester (nk_param_getter.py) and the job client
+#  - Run the harvester (nk_param_getter.py) and the job client
 #     from a home server, a Raspberry Pi, or an AWS EC2 instance
 #     with a dedicated Elastic IP (not a shared NAT).
-#   - If you must use cloud, attach a residential proxy to the
+#  - If you must use cloud, attach a residential proxy to the
 #     requests session in src/client/session.py:
 #
-#   - Never run from GitHub Actions — the IP pool is fully burned
+#  - Never run from GitHub Actions - the IP pool is fully burned
 #     for Naukri and will MFA-block on every single run.
 #
 # NOTE:

@@ -17,7 +17,7 @@ load_dotenv(ROOT / ".env")
 init(autoreset=True)
 
 # Match run.sh defaults
-os.environ.setdefault("USE_RAWSHN_CONFIG", "1")
+os.environ.setdefault("USE_ADVANCED_CONFIG", "1")
 if os.getenv("OPENROUTER_API_KEY") and not os.getenv("OPEN_API_KEY"):
     os.environ["OPEN_API_KEY"] = os.environ["OPENROUTER_API_KEY"]
 

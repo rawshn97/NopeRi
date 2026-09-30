@@ -13,7 +13,7 @@ from typing import Any
 DEFAULT_REVIEW_PATH = Path(
     os.getenv(
         "QUESTIONNAIRE_REVIEW_PATH",
-        "/Users/rawshn/Projects/NopeRi/questionnaire_review.jsonl",
+        "questionnaire_review.jsonl",
     )
 )
 

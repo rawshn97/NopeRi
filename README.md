@@ -1,408 +1,198 @@
 <p align="center">
-  <img src="assests/logo2.svg" alt="naukri-api-client" width="680"/>
+  <img src="assests/logo2.svg" alt="noperi-logo" width="680"/>
 </p>
 
-# Noperi
+# NopeRi: Autonomous Naukri Job Application Pipeline
 
-A lightweight and Selenium-free Python API client for Naukri.com, designed to help you update your profile, upload your resume, search jobs, and apply to jobs (easy apply) programmatically.
-
----
-
-**Status:** 🟢 Working (Last tested: July 2026)
+> **Fork Notice:** This repository is an enhanced production fork of [Traverser25/NopeRi](https://github.com/Traverser25/NopeRi), transforming the raw Selenium-free API client into a fully automated, quota-aware job application pipeline with multi-dimensional search sweeps, AI evaluation, and two-tier prescreening form autofill.
 
 ---
 
-## ✨ Features
+## What This Fork Adds
 
-| Feature | Status |
-|---|---|
-| Login & session management (Bearer token) | ✅ Working |
-| Resume upload (PDF) | ✅ Working |
-| Profile update (headline, name, summary) | ✅ Working |
-| Recommended jobs feed | ✅ Working |
-| `nkparam` token harvester (Selenium utility) | ✅ Working |
-| `nkparam` token generator (pure API, no Selenium) | ✅ Working |
-| Job search (`/jobapi/v3/search`) | ✅ Working |
-| Job details  (`jobapi/v1/job/`) | ✅ Working |
-| One-click job apply | ✅ Working |
-| Job questionnaire while applying| ✅ Working Partially (harcoded answer) |
-| OTP login/MFA | ✅ Working |
+The upstream repository provides foundational low-level REST client capabilities (login, token generation, search, apply). This fork introduces complete production infrastructure for hands-off daily execution:
 
+1. **Multi-Dimensional Freshness Sweep:**
+   - Sweeps queries in priority order: `Freshness (Age 3 -> 4 -> 5 -> 6 -> 7 days) x Target Titles x Cities x Experience Levels x Adaptive Pages`.
+   - Prioritizes the freshest job listings first, expanding to older listings only when session targets require it.
 
-> **Updated on April 13 2026**  
-> **No Selenium required** for core features.  
-> The `nkparam` token is generated via API.  
-> Selenium-based harvester is kept only as a backup utility.
+2. **Search Variation State Machine (`search_variation_state.json`):**
+   - Persists state for every `(title, city, experience, posting_age, page)` permutation across runs.
+   - Automatically skips already-queried slices on subsequent runs, eliminating duplicate requests and saving network quota.
 
-> **No Selenium required** for features 1–4. The Selenium script is only needed as a helper to harvest fresh `nkparam` tokens for the search endpoint.
+3. **Adaptive Pagination & Anti-Bot Protection:**
+   - Dynamically requests next pages only when a full 20-job page returns; stops early on short pages, all-duplicate pages (`STOP_ON_ZERO_NEW=1`), or pagination boundaries.
+   - Includes randomized request jitter and micro-batch cooling pauses to prevent rate limits and IP blocks.
+
+4. **Pre-AI External ATS Filtering:**
+   - Filters out third-party redirect links (Workday, Greenhouse, Taleo) before AI scoring using `jobTypeFlags` and `external_jobs.jsonl`.
+   - Preserves 70%+ of inference tokens and logs external jobs for manual review.
+
+5. **Two-Tier Questionnaire Engine:**
+   - **Tier 1 (Deterministic Static Profile):** `application-profile.yaml` handles standard questions (current CTC, expected CTC, notice period, relocation, YOE) deterministically with zero hallucinations.
+   - **Tier 2 (AI Fallback with Confidence Gating):** Novel questions are evaluated by LLM. If confidence is below 0.85, the submission aborts safely and logs the question for review.
+
+6. **Prescreening Review Log (`questionnaire_review.jsonl`):**
+   - Captures skipped questions with confidence scores and context.
+   - Enables human-in-the-loop review: add answers to `questionnaire_answers.yaml` and re-run.
+
+7. **Salary Floor Gating (`config/ba_salary.py`):**
+   - Filters Business Analyst roles below a configurable LPA floor (`BA_MIN_SALARY_LPA`, default 20 LPA), ensuring applications meet target compensation.
+
+8. **24-Hour Rolling Quota Enforcement:**
+   - Automatically tracks applications against Naukri's official rolling 24-hour limit of 50 Easy Applies, stopping gracefully when reached.
+
+9. **Cursor Agent Skill (`.cursor/skills/noperi/SKILL.md`):**
+   - Built-in Cursor slash command (`/noperi` or "Run NopeRi") that triggers the application workflow, reports skipped questions in chat, and handles interactive auto-retries.
+
+10. **Autonomous 00:10 IST Quota Scheduler:**
+    - Scheduler daemon (`scripts/run_scheduled_once.py`) that fires immediately after the midnight quota reset window under `caffeinate` or `launchd`.
 
 ---
 
-## 🗂️ Project Structure
+## System Architecture
 
 ```
-naukri-api-client/
-├── main.py                     # Entry point — demo of all features
-├── nkPool.txt                  # Pool of captured nkparam tokens
-├── .env                        # Credentials 
-├── src/
-│   ├── client/
-│   │   ├── naukri_client.py    # Core auth + profile + resume client
-│   │   ├── job_client.py       # Recommended jobs + search + apply
-│   │   └── session.py          # requests.Session factory
-│   ├── config/
-│   │   └── constants.py        # URLs, regex patterns, app IDs
-│   ├── exceptions/
-│   │   └── exceptions.py       # Custom exception classes
-│   ├── models/
-│   │   └── models.py           # Dataclasses: Job, NaukriSession, etc.
-│   └── utils/
-│       ├── extractors.py       # HTML / JS parsing helpers
-│       └── request_helper.py   # Exponential-retry decorator
-        ├── get_Nkparam.py      # Selenium helper to harvest nkparam tokens
-        ├── nkparam_generator.py   #generate nkparam tokens 
+[ Trigger: ./run.sh or Cursor /noperi ]
+             │
+             ▼
+   [ Session & Auth Engine ] ── Bearer Token & Dynamic nkparam
+             │
+             ├─► Freshness Sweep (Age: 3 -> 4 -> 5 -> 6 -> 7 days)
+             ├─► State Resume (search_variation_state.json)
+             └─► Adaptive Pagination (stop on short or duplicate page)
+             │
+             ▼
+   [ Pre-AI Flag Filter ] ──► External Redirect? ──► Log to external_jobs.jsonl
+             │ (Easy Apply Only)
+             ▼
+     [ Model Hub ] ◄── OpenRouter (google/gemini-2.5-flash-lite or similar)
+   (Score 0-100; Threshold >= 70)
+             │
+             ▼
+  [ Questionnaire Engine ]
+       ├── Tier 1: Static YAML (application-profile.yaml)
+       └── Tier 2: AI Fallback (Confidence < 0.85 skips & logs to questionnaire_review.jsonl)
+             │
+             ▼
+   [ Naukri Apply API ] (Submit Profile Resume)
+             │
+             ▼
+  [ applied_jobs.csv ] ── Logged and deduped
 ```
 
 ---
 
-## ⚠️ IP & Hosting Advice
+## Quickstart
 
-Naukri fingerprints IPs for every request. Many cloud providers trigger MFA or get blocked.
-
-**Avoid:**
-- Azure (all regions)
-- GitHub Actions / CI
-- Some Google Cloud regions
-- Datacenter IP ranges
-
-**Works:**
-- AWS (EC2 with Elastic IP)
-- Home broadband / personal IP (best)
-- Mobile hotspot (testing)
-- Residential proxy
-
-**Note:**
-- Sessions are IP-bound — changing IP will invalidate login
-- Avoid GitHub Actions completely (IP pool is flagged)
-
-
-
-
-## ⚙️ Installation
-
-**Requirements:** Python 3.10+
-
+### 1. Clone the Fork
 ```bash
-git https://github.com/Traverser25/NopeRi.git
-cd Noperi
+git clone https://github.com/rawshn97/NopeRi.git
+cd NopeRi
+```
+
+### 2. Set Up Environment
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in the project root:
-
+### 3. Configure Credentials (`.env`)
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+Fill in your details:
 ```env
 USERNAME=your_naukri_email@example.com
 PASSWORD=your_naukri_password
+
+# OpenRouter (Low cost / Free tier)
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+OPENAI_API_BASE=https://openrouter.ai/api/v1/chat/completions
+OPENAI_MODEL=google/gemini-2.5-flash-lite
+
+# Pipeline Controls
+USE_ADVANCED_CONFIG=1
+MIN_APPLY_SCORE=70
+NAUKRI_DAILY_QUOTA=50
 ```
 
----
-## 🚀 Quick Start 
-        you can simply run `main.py` also
-
-        ```python
-        from src.client.naukri_client import NaukriLoginClient
-        from src.client.job_client import NaukriJobClient
-        from dotenv import load_dotenv
-        import os
-        import time
-
-        load_dotenv()
-
-        # 1. Login
-        client = NaukriLoginClient(os.getenv("USERNAME"), os.getenv("PASSWORD"))
-        client.login()
-
-        # 2. Upload resume
-        client.update_resume("path/to/your_resume.pdf")
-
-        # 3. Update profile headline
-        client.update_profile(headline="Backend Engineer | Python · Node.js · AWS")
-
-        # 4. Update profile summary
-        client.update_profile(summary="Experienced engineer with 2+ years building scalable APIs.")
-
-        # 5. Job client
-        jc = NaukriJobClient(client)
-
-        # 6. Fetch recommended jobs
-        jobs = jc.get_recommended_jobs()
-        for job in jobs:
-            print(job.title, "—", job.company)
-
-        # 7. Search jobs
-        jobs = jc.search_jobs(keyword="Node.js developer", location="Hyderabad", experience=2)
-
-        # 8. Apply to jobs (easy apply)
-        for job in jobs:
-            mandatory = job.tags[:2] if job.tags else []
-            optional  = job.tags[2:] if len(job.tags) > 2 else []
-
-            try:
-                result = jc.apply_job(
-                    job,
-                    mandatory_skills=mandatory,
-                    optional_skills=optional,
-                    source="recommended"
-                )
-
-                job_result = (result.get("jobs") or [{}])[0]
-
-                # Skip jobs with questionnaire
-                if job_result.get("questionnaire"):
-                    print("Skipped (questionnaire required):", job.title)
-                    continue
-
-                print("Applied:", job.title)
-
-            except Exception as e:
-                print("Failed:", job.title, "|", e)
-
-            time.sleep(2)
-
-
-
-
----
-
-## 📖 API Reference
-
-### `NaukriLoginClient`
-
-| Method | Description |
-|---|---|
-| `login()` | Authenticates and stores the Bearer token + session cookies |
-| `update_resume(file)` | Uploads a PDF resume; accepts a file path (`str`) or a file-like object |
-| `update_profile(headline, name, summary)` | Updates one or more profile fields (all arguments are optional) |
-| `fetch_profile_id()` | Returns your Naukri profile ID (cached after first call) |
-| `get_form_key2()` | Extracts the internal `formKey` from Naukri's JS bundle (cached) |
-
-### `NaukriJobClient`
-
-| Method | Description |
-|---|---|
-| `get_recommended_jobs()` | Returns a list of `Job` objects personalised to your profile |
-| `search_jobs(keyword, location, page, experience, ...)` | Returns job results using the search endpoint |
-| `apply_job(job)` | Applies to a job programmatically |
-
-### `Job` model
-
-```python
-@dataclass
-class Job:
-    job_id:      str
-    title:       str
-    company:     str
-    location:    str
-    experience:  str
-    salary:      str
-    posted_date: str
-    apply_link:  str
-    description: str
-    tags:        list[str]
-```
-
----
-
-## 🔑 The `nkparam` Problem (and Current Solution)
-
-Naukri's job-search endpoint (`/jobapi/v3/search`) requires a request header called `nkparam`.  
-This is not just a random token — it is essentially an **encrypted/signature key** generated using:
-- current timestamp (time-based salt)
-- session-related data
-- page/context-specific parameters
-
-The logic exists inside Naukri’s obfuscated JavaScript bundle, which makes it hard to reverse directly.
-
-If `nkparam` is missing or invalid, the API returns `403 Forbidden`.
-
----
-
-### ✅ Current Solution
-
-We now generate `nkparam` directly via API logic (no browser required).
-
-
----
-
-### 🧰 Fallback (Optional)
-
-A Selenium-based harvester is still available as a backup:
-
-**`nk_param_getter.py`**
-- Opens Chrome
-- Captures network requests
-- Extracts valid `nkparam`
-- Stores in `nkPool.txt`
-
-
-
-
----
-
-## 🤖 Automated Job Application Agent
-
-For a fully automated, AI-powered job application workflow, use:
-
+### 4. Configure Your Profile (`application-profile.yaml`)
+Copy the example profile template:
 ```bash
-python apply_agent.py
+cp application-profile.example.yaml application-profile.yaml
 ```
+Customize with your details:
+- Contact information and location preferences
+- Current and expected compensation (LPA)
+- Notice period
+- Total and product years of experience
+- Target role titles and domain tags
 
-The agent is built on top of `NaukriLoginClient` and `NaukriJobClient`, so all authentication, session management, cookies, and token handling are already taken care of automatically.
+### 5. Verify Naukri Profile Resume
+Make sure your master PDF resume is uploaded to your [Naukri Profile](https://www.naukri.com/mnjuser/profile). Easy Apply automatically submits your uploaded profile resume.
 
----
-
-### ✨ What the Agent Does
-
-The workflow runs end-to-end automatically:
-
-1. Logs into Naukri using your `.env` credentials
-2. Searches jobs using curated backend-focused keywords
-3. Scores each job using an AI model (`OpenAI`)
-4. Automatically applies to jobs that pass the score threshold
-5. Handles basic job questionnaires using predefined answers
-6. Skips external company-site applications
-7. Prevents duplicate applications using a local CSV log
-8. Displays a colored terminal dashboard with live progress
-
----
-
-### ⚙️ Prerequisites
-
-Add your OpenAI API key to the `.env` file:
-
-```env
-OPEN_API_KEY=your-openai-api-key
-```
-
-Your `.env` should now look like:
-
-```env
-USERNAME=your_naukri_email@example.com
-PASSWORD=your_naukri_password
-OPEN_API_KEY=your-openai-api-key
-```
-
----
-
-### 🧠 Default Search Strategy
-
-The agent fetches jobs using curated backend-development queries such as:
-
-- Node.js Developer
-- Python Backend Developer
-- Backend Engineer
-- API Developer
-- Full Stack Developer
-
-It also filters using:
-- Experience level
-- Job freshness
-- Multiple result pages
-
----
-
-### 🔧 Configuration
-
-You can customize the behaviour directly inside `apply_agent.py`:
-
-| Variable | Purpose |
-|---|---|
-| `BQUERIES` | List of job search keywords |
-| `EXPERIENCE_LEVELS` | Experience filters |
-| `PAGES` | Number of search-result pages |
-| `JOB_AGE` | Max age of jobs to consider |
-| `SCORE_THRESHOLD` | Minimum AI score required before applying |
-
----
-
-### 📂 Application Tracking
-
-The agent keeps track of already-applied jobs using:
-
+### 6. Run
 ```bash
-applied_jobs.csv
+chmod +x run.sh
+./run.sh
 ```
 
-This ensures:
-- No duplicate applications
-- Safe repeated runs
-- Persistent local history
-
----
-
-### 🖥️ Terminal Dashboard
-
-The agent displays a live terminal dashboard showing:
-
-- Login status
-- Jobs fetched
-- AI evaluation score
-- Apply success/failure
-- Questionnaire detection
-- Final application summary
-
-Example:
-
-```text
-[FETCH] Backend Engineer — Hyderabad
-[AI SCORE] 8.7/10
-[APPLY] Success
+Or if you are using Cursor, simply type in chat:
+```markdown
+/noperi
 ```
 
 ---
 
- External company-site applications | ❌ Skipped intentionally |
+## Configuration Reference
+
+All settings can be customized via `.env` or passed inline before `./run.sh`:
+
+| Environment Variable | Default | Description |
+|---|---|---|
+| `USE_ADVANCED_CONFIG` | `1` | Enables the multi-dimensional search sweep and AI pipeline |
+| `MIN_APPLY_SCORE` | `70` | Minimum AI fit score (0-100) required to submit an application |
+| `NAUKRI_DAILY_QUOTA` | `50` | Maximum Easy Applies allowed in rolling 24-hour window |
+| `APPLY_TARGET` | None | Cumulative CSV total to reach (e.g. `APPLY_TARGET=100`) |
+| `MIN_APPLY_COUNT` | None | Minimum new applications required in this session |
+| `EXPAND_KEYWORDS` | `0` | Set to `1` to expand search across 12+ specialized role titles |
+| `TARGET_KEYWORDS` | Config | Comma-separated list of target job titles |
+| `CITY_ORDER` | Config | Comma-separated list of cities to sweep |
+| `EXPERIENCE_LEVELS` | `4,2` | Comma-separated experience levels to query |
+| `JOB_AGE_LEVELS` | `7` | Comma-separated freshness levels in days (e.g. `3,4,5,6,7`) |
+| `MAX_PAGES` | `2` | Hard cap on pages per search variation |
+| `STOP_ON_ZERO_NEW` | `1` | Stop paging when a page returns zero new jobs |
+| `RESET_SEARCH_VARIATIONS` | `0` | Set to `1` to clear variation history and re-scan from scratch |
+| `BA_MIN_SALARY_LPA` | `20` | Minimum salary threshold for Business Analyst titles |
 
 ---
 
-### 💡 Example Workflow
+## Screening Form Workflow & Auto-Retry
 
-```bash
-python apply_agent.py
-```
-
-Typical flow:
-
-```text
-Login Successful
-Fetching Jobs...
-Scoring with AI...
-Applying...
-Saved to applied_jobs.csv
-Run Complete
-```
+When an employer form includes questions that cannot be answered with high confidence (confidence `< 0.85`):
+1. The listing is safely skipped to avoid false claims.
+2. The question and options are logged to `questionnaire_review.jsonl`.
+3. Add the question keyword and your preferred answer to `questionnaire_answers.yaml`:
+   ```yaml
+   by_question_contains:
+     "visa sponsorship": "No"
+     "willing to relocate": "Yes"
+   ```
+4. Re-run `./run.sh` to automatically apply to previously skipped jobs.
 
 ---
 
-## ⚠️ Disclaimer
+## Production Safety & Best Practices
 
-This project is intended for personal automation of your **own** Naukri account. Use responsibly and in accordance with [Naukri's Terms of Service](https://www.naukri.com/termsAndConditions). The authors are not affiliated with Naukri / InfoEdge India Ltd.
-
----
-
-## 🛣️ Roadmap
-
-- [x] Complete job-search endpoint integration
-- [x] Complete one-click job-apply flow
-
-- [ ] Add async support (`httpx` / `aiohttp`)
-- [ ] CLI interface
+- **Home Broadband Recommended:** Run on home broadband or local connections. Naukri aggressively fingerprints datacenter ASNs (AWS, GCP, Azure, GitHub Actions).
+- **Residential Proxy Support:** For cloud deployment, set `HTTP_PROXY` and `HTTPS_PROXY` pointing to a residential proxy provider.
+- **24-Hour Rolling Quota:** Respect the 50 daily apply limit. Naukri caps applications at 50 per day across their platform.
 
 ---
 
-## 🤝 Contributing
+## License
 
-Pull requests are welcome!
-OTP/MFA login is now fully supported. The main area that could use help is **refactoring and cleanup** — improving code structure and formatting without breaking existing functionality.
-
----
+MIT License. See [LICENSE](LICENSE) for details.

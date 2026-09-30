@@ -18,32 +18,32 @@ if __name__ == "__main__":
     password = os.getenv("PASSWORD")
 
     # ---------------------------------------------------------------
-    # 1. Login — authenticates and stores session + bearer token
+    # 1. Login: authenticates and stores session + bearer token
     # ---------------------------------------------------------------
     client = NaukriLoginClient(username, password)
     client.login()
     # # ---------------------------------------------------------------
-    # # 2. Resume upload — uploads a new PDF resume to your profile,provide the file path 
+    # # 2. Resume upload: uploads a new PDF resume to your profile, provide the file path 
     # # ---------------------------------------------------------------
-    # print(client.update_resume(r"C:/Users/HP/Downloads/my_resume2.pdf"))
+    # print(client.update_resume("resume.pdf"))
 
     # # ---------------------------------------------------------------
-    # # 3. Profile update — update headline and summary independently
+    # # 3. Profile update: update headline and summary independently
     # #    Both fields are optional, pass only what you want to change
     # # ---------------------------------------------------------------
-    # print(client.update_profile(headline="Software Engineer with 2.3 years of experience in backend development using Node.js, Python, AWS, SQL, and NoSQL."
+    # print(client.update_profile(headline="Software Engineer with experience in backend development using Node.js, Python, AWS, SQL, and NoSQL."
     # ))
 
     # print(client.update_profile(summary="this is my summary"))
 
     # # ---------------------------------------------------------------
-    # # 4. Misc — fetch profile ID and form key (mostly for debugging)
+    # # 4. Misc: fetch profile ID and form key (mostly for debugging)
     # # ---------------------------------------------------------------
     # # print(client.fetch_profile_id())
     # # print(client.get_form_key2())
 
     # # ---------------------------------------------------------------
-    # # 5. Recommended jobs — fetches personalised job listings
+    # # 5. Recommended jobs: fetches personalized job listings
     # #    based on your Naukri profile
     # # ---------------------------------------------------------------
     jc = NaukriJobClient(client)
@@ -79,7 +79,7 @@ if __name__ == "__main__":
                 # Check questionnaire
                 job_result = (result.get("jobs") or [{}])[0]
                 if job_result.get("questionnaire"):
-                    print(f"{Fore.YELLOW}   Skipped — questionnaire required{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}   Skipped: questionnaire required{Style.RESET_ALL}")
                     continue
 
                 print(f"{Fore.GREEN}  ✅ Applied successfully!{Style.RESET_ALL}")

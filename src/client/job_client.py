@@ -43,12 +43,12 @@ APPLY_SRC_MAP = {
 # NaukriLoginClient. Handles job search, recommendations, and apply workflows.
 #
 # Responsibilities:
-#   - Build correct headers (authenticated and non-authenticated)
-#   - Generate SEO-style keys for the search endpoint
-#   - Attach the required nkparam header
-#   - Parse raw API responses into the Job model
-#   - Normalize inconsistent fields (placeholders, tags, etc.)
-#   - Handle common failure cases (403, 406, malformed JSON)
+#  - Build correct headers (authenticated and non-authenticated)
+#  - Generate SEO-style keys for the search endpoint
+#  - Attach the required nkparam header
+#  - Parse raw API responses into the Job model
+#  - Normalize inconsistent fields (placeholders, tags, etc.)
+#  - Handle common failure cases (403, 406, malformed JSON)
 # ----------------------------------------------------------------------------------
 
 
@@ -317,7 +317,7 @@ class NaukriJobClient:
             raise NaukriAuthError(msg)
 
         if not res.ok:
-            raise NaukriParseError(f"Job details fetch failed: {res.status_code} — {res.text}")
+            raise NaukriParseError(f"Job details fetch failed: {res.status_code} - {res.text}")
 
         try:
             return res.json()
@@ -431,7 +431,7 @@ class NaukriJobClient:
             raise NaukriAuthError(msg, status_code=res.status_code)
 
         if not res.ok:
-            raise NaukriParseError(f"Apply failed: {res.status_code} — {res.text}")
+            raise NaukriParseError(f"Apply failed: {res.status_code} - {res.text}")
 
         try:
             return res.json()
@@ -582,7 +582,7 @@ class NaukriJobClient:
             res = self._session.get(url, headers=self._search_headers(), params=params)
 
             if res.status_code == 403:
-                raise NaukriAuthError("403 Forbidden — nkparam token likely expired")
+                raise NaukriAuthError("403 Forbidden - nkparam token likely expired")
 
             if res.status_code == 406:
                 if attempt < len(recaptcha_backoff):
@@ -618,7 +618,7 @@ class NaukriJobClient:
                     page,
                 )
                 return []
-            raise NaukriParseError(f"Search failed: {res.status_code} — {res.text}")
+            raise NaukriParseError(f"Search failed: {res.status_code} - {res.text}")
 
         data     = res.json()
         raw_jobs = data.get("jobDetails") or data.get("jobs") or []

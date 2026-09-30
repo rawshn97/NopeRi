@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 # Retry configuration
 # ---------------------------------------------------------------------------
 RETRY_MAX_ATTEMPTS = 5       # total attempts (1 original + 4 retries)
-RETRY_BASE_DELAY   = 1.0     # seconds — delay before the 1st retry
-RETRY_MAX_DELAY    = 60.0    # seconds — cap on any single sleep
+RETRY_BASE_DELAY   = 1.0     # seconds - delay before the 1st retry
+RETRY_MAX_DELAY    = 60.0    # seconds - cap on any single sleep
 RETRY_MULTIPLIER   = 2.0     # exponential growth factor
 RETRY_JITTER       = 0.3     # fraction of delay added as random jitter
 
@@ -56,7 +56,7 @@ def with_exponential_retry(
                     # If the call returned a response, check the status.
                     if hasattr(result, "status_code") and _should_retry(result):
                         logger.warning(
-                            "[%s] attempt %d/%d — HTTP %d, retrying in %.1fs …",
+                            "[%s] attempt %d/%d - HTTP %d, retrying in %.1fs …",
                             label, attempt, max_attempts, result.status_code, delay,
                         )
                         # On last attempt just return the bad response so the

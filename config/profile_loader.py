@@ -1,4 +1,4 @@
-"""Load Rawshn application profile from YAML for NopeRi questionnaire autofill."""
+"""Load application profile from YAML for NopeRi questionnaire autofill."""
 
 from __future__ import annotations
 
@@ -8,19 +8,35 @@ from typing import Any
 
 import yaml
 
-DEFAULT_PROFILE_PATH = Path(
-    os.getenv(
-        "APPLICATION_PROFILE_PATH",
-        "/Users/rawshn/Projects/interview-prep/profile/application-profile.yaml",
-    )
-)
 
-DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH = Path(
-    os.getenv(
-        "QUESTIONNAIRE_OVERRIDES_PATH",
-        "/Users/rawshn/Projects/interview-prep/profile/questionnaire_answers.yaml",
-    )
-)
+def get_default_profile_path() -> Path:
+    env_path = os.getenv("APPLICATION_PROFILE_PATH")
+    if env_path:
+        return Path(env_path)
+    local_path = Path("application-profile.yaml")
+    if local_path.exists():
+        return local_path
+    profile_dir_path = Path("profile/application-profile.yaml")
+    if profile_dir_path.exists():
+        return profile_dir_path
+    return local_path
+
+
+def get_default_questionnaire_overrides_path() -> Path:
+    env_path = os.getenv("QUESTIONNAIRE_OVERRIDES_PATH")
+    if env_path:
+        return Path(env_path)
+    local_path = Path("questionnaire_answers.yaml")
+    if local_path.exists():
+        return local_path
+    profile_dir_path = Path("profile/questionnaire_answers.yaml")
+    if profile_dir_path.exists():
+        return profile_dir_path
+    return local_path
+
+
+DEFAULT_PROFILE_PATH = get_default_profile_path()
+DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH = get_default_questionnaire_overrides_path()
 
 _cached_raw: dict[str, Any] | None = None
 _cached_profile: dict[str, Any] | None = None
@@ -66,7 +82,7 @@ Portfolio: {contact.get('portfolio', '')}
 Years of experience: {targeting.get('years_experience_total', '')} total ({targeting.get('years_experience_product', '')}+ in product management)
 Notice period: {availability.get('notice_period_text', '')}
 Target compensation: {compensation.get('target_annual_lpa', '')} LPA INR ({compensation.get('target_annual_text', '')})
-Work authorization: Indian citizen, authorized to work in India
+Work authorization: Authorized to work in India
 
 Recent role: {recent.get('title', '')} at {recent.get('company', '')} ({recent.get('start_date', '')} to {recent.get('end_date', '')})
 {chr(10).join(prior_lines)}
@@ -82,14 +98,17 @@ Summary: {raw.get('summary', '')}
 
 def load_raw_profile(path: Path | str | None = None) -> dict[str, Any]:
     global _cached_raw
-    profile_path = Path(path) if path else DEFAULT_PROFILE_PATH
-    if _cached_raw is not None and profile_path == DEFAULT_PROFILE_PATH:
+    profile_path = Path(path) if path else get_default_profile_path()
+    if _cached_raw is not None and path is None:
         return _cached_raw
+
+    if not profile_path.exists():
+        return {}
 
     with open(profile_path, encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
 
-    if profile_path == DEFAULT_PROFILE_PATH:
+    if path is None:
         _cached_raw = data
     return data
 
@@ -97,8 +116,8 @@ def load_raw_profile(path: Path | str | None = None) -> dict[str, Any]:
 def load_application_profile(path: Path | str | None = None) -> dict[str, Any]:
     """Return a flat dict used by questionnaire static rules and AI context."""
     global _cached_profile
-    profile_path = Path(path) if path else DEFAULT_PROFILE_PATH
-    if _cached_profile is not None and profile_path == DEFAULT_PROFILE_PATH:
+    profile_path = Path(path) if path else get_default_profile_path()
+    if _cached_profile is not None and path is None:
         return _cached_profile
 
     raw = load_raw_profile(profile_path)
@@ -109,7 +128,7 @@ def load_application_profile(path: Path | str | None = None) -> dict[str, Any]:
     location = raw.get("location") or {}
     domain = targeting.get("domain_experience") or {}
 
-    target_lpa = int(compensation.get("target_annual_lpa", 24))
+    target_lpa = int(compensation.get("target_annual_lpa", 0))
     target_inr = compensation.get("target_annual_inr")
     if target_inr is None:
         target_inr = target_lpa * 100000
@@ -119,19 +138,19 @@ def load_application_profile(path: Path | str | None = None) -> dict[str, Any]:
         "email": (raw.get("contact") or {}).get("email_primary", ""),
         "phone": (raw.get("contact") or {}).get("phone_display", ""),
         "location": location.get("full", ""),
-        "city": (location.get("current") or {}).get("city") or location.get("city", "Hyderabad"),
+        "city": (location.get("current") or {}).get("city") or location.get("city", "Bengaluru"),
         "willing_to_relocate": bool(location.get("willing_to_relocate", True)),
-        "current_ctc": "0",
-        "current_ctc_lpa": 0,
+        "current_ctc": str(compensation.get("current_annual_lpa", 0)),
+        "current_ctc_lpa": compensation.get("current_annual_lpa", 0),
         "expected_ctc": str(target_lpa),
         "expected_ctc_lpa": target_lpa,
         "expected_ctc_inr": int(target_inr),
-        "exp_total": str(targeting.get("years_experience_total", "6")),
+        "exp_total": str(targeting.get("years_experience_total", "5")),
         "exp_product": str(targeting.get("years_experience_product", "3")),
-        "exp_infosec": str(targeting.get("years_experience_infosec", "3")),
-        "exp_b2c": str(domain.get("b2c_years", 3)),
-        "exp_ecommerce": str(domain.get("ecommerce_years", 3)),
-        "exp_npd": str(domain.get("npd_years", 3)),
+        "exp_infosec": str(targeting.get("years_experience_infosec", "0")),
+        "exp_b2c": str(domain.get("b2c_years", 0)),
+        "exp_ecommerce": str(domain.get("ecommerce_years", 0)),
+        "exp_npd": str(domain.get("npd_years", 0)),
         "exp_pricing_strategy": str(domain.get("pricing_strategy_years", 0)),
         "exp_marketing_strategy": str(domain.get("marketing_strategy_years", 0)),
         "exp_marketing": str(domain.get("marketing_years", 0)),
@@ -148,7 +167,7 @@ def load_application_profile(path: Path | str | None = None) -> dict[str, Any]:
         "raw": raw,
     }
 
-    if profile_path == DEFAULT_PROFILE_PATH:
+    if path is None:
         _cached_profile = profile
     return profile
 
@@ -159,13 +178,13 @@ _cached_overrides: dict[str, Any] | None = None
 def load_questionnaire_overrides(path: Path | str | None = None) -> dict[str, Any]:
     """User-provided prescreening answer overrides (optional yaml)."""
     global _cached_overrides
-    overrides_path = Path(path) if path else DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH
-    if _cached_overrides is not None and overrides_path == DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH:
+    overrides_path = Path(path) if path else get_default_questionnaire_overrides_path()
+    if _cached_overrides is not None and path is None:
         return _cached_overrides
 
     if not overrides_path.exists():
         empty = {"by_question_id": {}, "by_question_contains": {}}
-        if overrides_path == DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH:
+        if path is None:
             _cached_overrides = empty
         return empty
 
@@ -176,6 +195,6 @@ def load_questionnaire_overrides(path: Path | str | None = None) -> dict[str, An
         "by_question_id": data.get("by_question_id") or {},
         "by_question_contains": data.get("by_question_contains") or {},
     }
-    if overrides_path == DEFAULT_QUESTIONNAIRE_OVERRIDES_PATH:
+    if path is None:
         _cached_overrides = overrides
     return overrides

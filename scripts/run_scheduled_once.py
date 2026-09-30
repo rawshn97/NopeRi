@@ -151,7 +151,7 @@ def main():
 
     env = os.environ.copy()
     env["MIN_APPLY_COUNT"] = str(args.min_apply_count)
-    env["USE_RAWSHN_CONFIG"] = "1"
+    env["USE_ADVANCED_CONFIG"] = "1"
 
     with open(run_log_path, "w", encoding="utf-8") as run_log:
         proc = subprocess.Popen(

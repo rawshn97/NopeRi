@@ -14,10 +14,10 @@
 #   8. Prints a structured terminal summary at the end of each run.
 #
 # Dependencies:
-#   - NaukriLoginClient   : handles login and session management
-#   - NaukriJobClient     : wraps Naukri's internal job/apply APIs
-#   - JobFilterPipeline2  : AI-based job relevance scorer
-#   - colorama            : terminal color output
+#  - NaukriLoginClient   : handles login and session management
+#  - NaukriJobClient     : wraps Naukri's internal job/apply APIs
+#  - JobFilterPipeline2  : AI-based job relevance scorer
+#  - colorama            : terminal color output
 #
 # Configuration:
 #   Set USERNAME, PASSWORD, and OPEN_API_KEY in a .env file.
@@ -73,7 +73,7 @@ logger = logging.getLogger(__name__)
 
 
 # ----------------------------------------------------------------------------------
-# Persistence — applied jobs CSV
+# Persistence - applied jobs CSV
 #
 # A flat CSV file is used as a lightweight store for applied job IDs. This
 # prevents the agent from applying to the same job on subsequent runs.
@@ -173,11 +173,20 @@ def resolve_session_goal(
     return max(goals)
 
 
+def is_advanced_config_enabled() -> bool:
+    val = (
+        os.getenv("USE_ADVANCED_CONFIG")
+        or os.getenv("USE_CUSTOM_CONFIG")
+        or ""
+    ).strip().lower()
+    return val in ("1", "true", "yes")
+
+
 def get_search_round_config() -> tuple[int, int]:
-    if os.getenv("USE_RAWSHN_CONFIG") == "1":
-        from config.rawshn_search import MAX_SEARCH_ROUNDS, PAGES
-        pages = int(os.getenv("RAWSHN_PAGES", str(PAGES)))
-        rounds = int(os.getenv("RAWSHN_SEARCH_ROUNDS", str(MAX_SEARCH_ROUNDS)))
+    if is_advanced_config_enabled():
+        from config.search_config import MAX_SEARCH_ROUNDS, PAGES
+        pages = int(os.getenv("PAGES", str(PAGES)))
+        rounds = int(os.getenv("SEARCH_ROUNDS", str(MAX_SEARCH_ROUNDS)))
         return pages, rounds
     return 1, 1
 
@@ -194,8 +203,8 @@ def build_pipeline(ai_key: str):
         daily_limit = max(daily_limit, max(0, apply_target - starting))
     if min_apply is not None:
         daily_limit = max(daily_limit, min_apply)
-    if os.getenv("USE_RAWSHN_CONFIG") == "1":
-        from config.rawshn_classifier import JobFilterPipelinePM
+    if is_advanced_config_enabled():
+        from config.classifier_config import JobFilterPipelinePM
         return JobFilterPipelinePM(
             openai_api_key=ai_key,
             daily_apply_limit=daily_limit,
@@ -321,7 +330,7 @@ def print_status_skipped_already_applied() -> None:
 
 
 def print_status_failed(error) -> None:
-    print(f"  {Fore.RED}Status  :  Failed — {error}{Style.RESET_ALL}")
+    print(f"  {Fore.RED}Status  :  Failed - {error}{Style.RESET_ALL}")
 
 
 def print_questionnaire_notice() -> None:
@@ -331,7 +340,7 @@ def print_questionnaire_notice() -> None:
 def print_pipeline_results(final_jobs: list) -> None:
     # Prints a compact ranked table of every job that passed the AI filter,
     # sorted by score descending. Gives a quick overview before the apply loop.
-    print_section_title(f"AI filter — {len(final_jobs)} jobs passed")
+    print_section_title(f"AI filter - {len(final_jobs)} jobs passed")
     col_w  = [4, 35, 28, 6]
     header = (
         f"  {Fore.WHITE}{'#':<{col_w[0]}}  "
@@ -430,13 +439,13 @@ def print_summary(
 # collects results into a deduplicated list.
 #
 # Design decisions:
-#   - Queries are hand-curated for the target stack (Node.js, Python, backend).
-#   - Only Bangalore and Pune are targeted — highest product/startup density.
-#   - Experience is fixed at 2 years. exp=3 pulled in too many senior roles.
-#   - job_age=2 keeps results fresh, which improves apply response rates.
-#   - 1 page per query. Quality drops sharply beyond page 2 on Naukri.
-#   - 1.2s sleep between requests to avoid rate limiting.
-#   - Deduplication is done by job_id across all queries before returning.
+#  - Queries are hand-curated for the target stack (Node.js, Python, backend).
+#  - Only Bangalore and Pune are targeted - highest product/startup density.
+#  - Experience is fixed at 2 years. exp=3 pulled in too many senior roles.
+#  - job_age=2 keeps results fresh, which improves apply response rates.
+#  - 1 page per query. Quality drops sharply beyond page 2 on Naukri.
+#  - 1.2s sleep between requests to avoid rate limiting.
+#  - Deduplication is done by job_id across all queries before returning.
 # ----------------------------------------------------------------------------------
 
 def filter_easy_apply_candidates(jobs: list) -> tuple[list, dict[str, int]]:
@@ -525,7 +534,7 @@ def iter_search_jobs(
     """
     Yield lists of new (deduped) jobs after each search API call.
 
-    Rawshn nesting (outer to inner): freshness -> title -> location -> experience -> pages.
+    Multi-dimensional sweep nesting (outer to inner): freshness -> title -> location -> experience -> pages.
     Fresher jobAge bands run first; older bands run only if the session goal is not met.
 
     Pagination is adaptive: keep requesting the next page while Naukri returns a full
@@ -533,9 +542,9 @@ def iter_search_jobs(
     entire page is duplicate (0 new jobs), or when pageNo is past the last page.
     Hard cap: MAX_PAGES_PER_QUERY (default 6).
     """
-    use_rawshn = os.getenv("USE_RAWSHN_CONFIG") == "1"
-    if use_rawshn:
-        from config.rawshn_search import (
+    use_advanced = is_advanced_config_enabled()
+    if use_advanced:
+        from config.search_config import (
             CITY_ORDER,
             EXPERIENCE_LEVELS,
             JOB_AGE_LEVELS,
@@ -558,7 +567,8 @@ def iter_search_jobs(
         MAX_PAGES_PER_QUERY = 5
         MIN_NEW_TO_CONTINUE = 1
         RESULTS_PER_PAGE = 20
-        STOP_ON_ZERO_NEW = os.getenv("RAWSHN_STOP_ON_ZERO_NEW", "1").strip().lower() not in (
+        _stop_zero_raw = os.getenv("STOP_ON_ZERO_NEW", "1").strip().lower()
+        STOP_ON_ZERO_NEW = _stop_zero_raw not in (
             "0",
             "false",
             "no",
@@ -611,7 +621,7 @@ def iter_search_jobs(
         "yes",
     )
 
-    if use_rawshn:
+    if use_advanced:
         combo_base = (
             len(PM_KEYWORDS)
             * len(CITY_ORDER)
@@ -812,7 +822,7 @@ def iter_search_jobs(
             if not keep_going:
                 break
 
-    if use_rawshn:
+    if use_advanced:
         for age_idx, job_age in enumerate(JOB_AGE_LEVELS):
             if (should_stop and should_stop()) or _sweep_walled():
                 return
@@ -944,7 +954,7 @@ def run_search_round_streaming(
 
 
 # ----------------------------------------------------------------------------------
-# Main — orchestrates the full agent run
+# Main - orchestrates the full agent run
 # ----------------------------------------------------------------------------------
 
 def _job_score(meta: dict) -> int | None:
@@ -1228,10 +1238,10 @@ if __name__ == "__main__":
     variation_stats = {"tried": 0, "skipped": 0}
     variation_run = start_run(variation_state)
 
-    use_rawshn = os.getenv("USE_RAWSHN_CONFIG") == "1"
+    use_advanced = is_advanced_config_enabled()
     space_estimate = None
-    if use_rawshn:
-        from config.rawshn_search import (
+    if use_advanced:
+        from config.search_config import (
             CITY_ORDER,
             EXPERIENCE_LEVELS,
             JOB_AGE_LEVELS,

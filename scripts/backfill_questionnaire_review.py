@@ -13,16 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.questionnaire_review import backfill_from_captures, DEFAULT_REVIEW_PATH
 
-DEFAULT_CAPTURES = [
-    Path(
-        "/Users/rawshn/.cursor/projects/Users-rawshn-Projects-Applying-for-Jobs/"
-        "agent-tools/381047d9-ff6b-47f6-bda5-5aeb56ab545b.txt"
-    ),
-    Path(
-        "/Users/rawshn/.cursor/projects/Users-rawshn-Projects-Applying-for-Jobs/"
-        "agent-tools/c0fb9e51-3e39-46d4-a694-906eb4e3e6f0.txt"
-    ),
-]
+DEFAULT_CAPTURES: list[Path] = []
 
 
 def main() -> None:

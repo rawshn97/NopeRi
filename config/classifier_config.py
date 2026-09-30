@@ -1,4 +1,4 @@
-"""PM-oriented job filter overrides for Rawshn (USE_RAWSHN_CONFIG=1)."""
+"""Job filter classification pipeline with AI scoring and domain guardrails."""
 
 import json
 import re
@@ -6,6 +6,7 @@ import re
 import requests
 
 from config.ba_salary import BA_MIN_LPA, is_business_analyst_title, parse_salary_lpa
+from config.profile_loader import load_application_profile
 from src.client.jop_classifier import JobFilterPipeline2
 
 
@@ -15,14 +16,13 @@ class JobFilterPipelinePM(JobFilterPipeline2):
         "prd", "user research", "gtm", "stakeholder", "prioritization",
         "business analyst", "business analysis", "requirements", "brd", "frd",
         "process", "gap analysis", "user stories", "acceptance criteria",
-        "b2b saas", "hr tech", "hrtech", "edtech", "marketplace", "enterprise",
-        "onboarding", "implementation", "integration", "ats", "talent",
+        "b2b saas", "enterprise", "marketplace", "onboarding", "implementation",
         "ai", "ml", "llm", "generative ai", "genai", "prompt engineering",
         "figma", "sql", "jira", "analytics", "mixpanel", "amplitude",
         "a/b testing", "ux", "ui", "agile", "scrum", "api",
     ]
 
-    # Allow Business Analyst / Senior BA. Do not use bare "analyst" (too broad).
+    # Veto non-relevant roles to protect daily apply quota
     VETO_TITLES = [
         "walk-in", "walkin", "walk in",
         "android developer", "ios developer", "flutter developer",
@@ -58,16 +58,15 @@ class JobFilterPipelinePM(JobFilterPipeline2):
     }
 
     def experience_filter(self, jobs):
-        # Keep roles overlapping 3-7 years (search EXPERIENCE_LEVELS + classifier alignment).
+        # Keep roles overlapping 2-8 years
         return [
             j for j in jobs
-            if j.get("experience_min", 0) <= 7
-            and j.get("experience_max", 10) >= 3
+            if j.get("experience_min", 0) <= 8
+            and j.get("experience_max", 10) >= 2
         ]
 
     def salary_filter(self, jobs):
-        # BA titles: drop listings whose posted ceiling is 20 LPA or below.
-        # Undisclosed BA stays in the pipeline; apply_agent re-checks (job details).
+        # BA titles: drop listings whose posted ceiling is below BA_MIN_LPA.
         clean = []
         for j in jobs:
             if not is_business_analyst_title(j.get("title")):
@@ -85,6 +84,13 @@ class JobFilterPipelinePM(JobFilterPipeline2):
         return clean
 
     def _call_ai(self, jobs):
+        profile = load_application_profile()
+        exp_total = profile.get("exp_total") or "5"
+        exp_product = profile.get("exp_product") or "3"
+        skills = ", ".join(profile.get("skills", [])) or "product management, product strategy, PRDs, roadmaps, agile, user research"
+        location = profile.get("location") or "India"
+        expected_ctc = profile.get("expected_ctc") or "flexible"
+
         job_block = ""
         for i, j in enumerate(jobs):
             mandatory = ", ".join(j.get("mandatory_tags", [])) or "none"
@@ -105,59 +111,38 @@ class JobFilterPipelinePM(JobFilterPipeline2):
 You are a strict job filter for a Product Manager / Senior Business Analyst candidate. Score each job 0-100.
 Use the full range; avoid clustering every job at 85 or 60.
 
-CANDIDATE:
-- 6 years total experience (3+ in product management; strong BA / requirements / stakeholder work)
-- Core PM: product strategy, PRDs, roadmap, user research, GTM, stakeholder management
-- Core BA: requirements gathering, BRD/FRD, process mapping, user stories, UAT, SQL, Jira
-- Domain: B2B SaaS, HR tech, EdTech, marketplaces, enterprise onboarding and integrations
-- Technical depth: ATS integrations, API scope, AI/ML products, LLM growth tools, SQL, Figma
-- Recent: Phenom (enterprise ATS onboarding), Interview Kickstart, Unstop, Herkey
-- Foundation: application security at Deloitte and Optum
-- Target titles: Product Manager, Senior PM, AI PM, Technical PM, Implementation PM,
-  Senior Business Analyst, Business Analyst (product / tech / SaaS)
-- Location: Hyderabad (open to Pune, Bengaluru, and remote India), immediate joiner
-- Target comp: ~24 LPA INR flexible
-- No marketing management experience; skip pure marketing manager roles
-- Not looking for Customer Success, Support, Sales Enablement, Sales Operations, Account Management, or non-product operations (these are NOT PM-adjacent; score 0-20)
+CANDIDATE PROFILE:
+- Experience: {exp_total} years total ({exp_product}+ in product management / business analysis)
+- Core Skills: {skills}
+- Target roles: Product Manager, Senior PM, Technical PM, AI PM, Growth PM, Senior Business Analyst, Business Analyst (tech/product)
+- Location preference: {location}
+- Expected compensation: {expected_ctc} LPA INR
+- Exclusions: Skip pure marketing manager roles. Skip Customer Success, Support, Sales Operations, and non-product operations (score 0-20).
 
 SCORING RUBRIC:
 
 90-100: Strong PM fit, apply immediately
-  PM or Senior PM title + B2B SaaS/HR tech/marketplace domain + 3-8 yrs exp
-  Tags overlap with product strategy, onboarding, integrations, AI, analytics
+  PM or Senior PM title with product strategy, roadmap, PRD, analytics, or tech domain tags.
+  Experience requirement matches candidate profile range.
 
 75-89: Good PM or Senior BA fit, apply
-  PM-adjacent title (Product Owner, Growth PM) with relevant domain tags
-  Senior Business Analyst / Business Analyst in product, SaaS, tech, or enterprise systems
-  Some stack overlap, exp 3-8 yrs
+  PM-adjacent title (Product Owner, Growth PM, Technical PM) or Senior Business Analyst in product/tech.
+  Solid stack and requirements overlap.
 
 55-74: Marginal fit, lower priority
-  Product adjacent role with strong overlap, or BA with partial domain overlap
-  Exp borderline (2 yrs min or 8+ yrs max)
+  Product adjacent role with partial overlap, or Business Analyst with domain alignment.
 
 30-54: Weak fit, skip
-  Project manager, pure finance/risk/data analyst, or tech-heavy with little PM/BA signal
+  Project manager, pure finance/risk/data analyst without business or product context.
 
 0-29: Do not apply
-  Customer Success, Success Manager, Sales Effectiveness, Sales Enablement, Sales Ops, Account Management
-  Pure engineering (Android, iOS, backend-only SDE), data science, sales, intern
-  Walk-in, tutor, trainer, or zero PM/BA/domain overlap
-
-RULES:
-- "Product Manager" + HR tech / SaaS tags -> 85+
-- "Senior Business Analyst" or "Business Analyst" + product/SaaS/tech/requirements tags -> 70+
-- "Success Manager", "Customer Success", "Sales Effectiveness", "Sales Enablement", "Sales Ops" -> 0-20 (strictly DO NOT apply; NOT PM-adjacent)
-- Generic "Manager" or "Operations" titles without "Product", "Product Owner", or "Business Analyst" -> score <= 30
-- Pure data/finance/risk analyst (no business/product context) -> 15-35
-- "Project Manager" without product tags -> 20-40
-- Pure developer/engineer titles -> 0-15
-- Implementation PM with onboarding/integration tags -> 80+
-- Recency: 0-1 days old -> mentally add 5 points
+  Customer Success, Success Manager, Sales Operations, Account Management.
+  Pure engineering (Android, iOS, backend-only), data science, sales, internship, walk-in.
 
 Return ONLY valid JSON:
 {{
-  "0": {{"score": 92, "reason": "Senior PM, HR tech, onboarding tags, 5-8 yrs"}},
-  "1": {{"score": 5,  "reason": "Android developer, zero PM overlap"}}
+  "0": {{"score": 92, "reason": "Senior PM, tech/product tags, matches experience"}},
+  "1": {{"score": 10, "reason": "Pure sales role, zero PM overlap"}}
 }}
 
 Jobs:

@@ -1,0 +1,78 @@
+# Candidate application profile for NopeRi automated questionnaire answering.
+# Copy this file to 'application-profile.yaml' and customize with your details.
+
+identity:
+  legal_name: "Candidate Name"
+
+contact:
+  email_primary: "candidate@example.com"
+  phone_display: "+91-9876543210"
+  linkedin: "https://www.linkedin.com/in/yourprofile"
+  portfolio: "https://yourportfolio.com"
+
+location:
+  full: "Bengaluru, India"
+  city: "Bengaluru"
+  willing_to_relocate: true
+
+targeting:
+  target_roles:
+    - "Product Manager"
+    - "Senior Product Manager"
+    - "Technical Product Manager"
+    - "Business Analyst"
+  years_experience_total: 5
+  years_experience_product: 3
+  years_experience_infosec: 0
+  domain_experience:
+    b2c_years: 2
+    ecommerce_years: 2
+    npd_years: 1
+    pricing_strategy_years: 0
+    marketing_strategy_years: 0
+    marketing_years: 0
+    packaging_development_years: 0
+
+compensation:
+  current_annual_lpa: 18
+  target_annual_lpa: 25
+  target_annual_inr: 2500000
+  target_annual_text: "25 LPA"
+
+availability:
+  notice_period_days: 15
+  notice_period_text: "15 days"
+
+career_narrative:
+  tell_me_about_yourself: "Experienced Product Manager with a track record of driving B2B SaaS and digital product roadmaps from conception through launch."
+  gap:
+    reason_short: "None"
+    reason_screening: "No career gaps."
+
+skills:
+  core_pm:
+    - "product strategy"
+    - "product roadmaps"
+    - "PRD"
+    - "user research"
+    - "prioritization"
+    - "stakeholder management"
+    - "agile"
+    - "scrum"
+  technical:
+    - "SQL"
+    - "APIs"
+    - "system architecture basics"
+    - "AI and ML integrations"
+  tools:
+    - "Jira"
+    - "Figma"
+    - "Mixpanel"
+    - "Amplitude"
+    - "Postman"
+  industries:
+    - "B2B SaaS"
+    - "FinTech"
+    - "E-Commerce"
+
+summary: "Product Manager with expertise in SaaS product development, roadmap execution, and cross-functional leadership."

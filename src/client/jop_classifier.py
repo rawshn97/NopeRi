@@ -9,7 +9,7 @@ import requests
 
 class JobFilterPipeline2:
 
-    # ── your stack — AI scores against this ──────────────────────────────────
+    # ── your stack - AI scores against this ──────────────────────────────────
     MY_STACK = [
         # ── Core backend ──────────────────────────────────────────────
         "node", "node.js", "nodejs", "python", "javascript", "typescript",
@@ -46,7 +46,7 @@ class JobFilterPipeline2:
         "microservices", "system design", "api design",
     ]
 
-    # ── hard veto BEFORE ai — title only, zero ambiguity ────────────────────
+    # ── hard veto BEFORE ai - title only, zero ambiguity ────────────────────
     VETO_TITLES = [
         "walk-in", "walkin", "walk in",
         "android developer", "ios developer", "flutter developer",
@@ -170,7 +170,7 @@ class JobFilterPipeline2:
         return jobs
 
     # =========================================================
-    # NORMALIZE  — tags are the star, keep them clean
+    # NORMALIZE  - tags are the star, keep them clean
     # =========================================================
     def normalize_jobs(self, jobs):
         normalized = []
@@ -203,7 +203,7 @@ class JobFilterPipeline2:
             elif len(nums) == 1:
                 exp_min = exp_max = int(nums[0])
 
-            # tags — normalize once, use everywhere
+            # tags - normalize once, use everywhere
             raw_tags = job.get("tags") or job.get("skills") or []
             if isinstance(raw_tags, str):
                 raw_tags = re.split(r"[,;|]", raw_tags)
@@ -248,7 +248,7 @@ class JobFilterPipeline2:
         return result
 
     # =========================================================
-    # HARD VETO  — title only, no ambiguity allowed
+    # HARD VETO  - title only, no ambiguity allowed
     # =========================================================
     def hard_veto(self, jobs):
         clean = []
@@ -271,7 +271,7 @@ class JobFilterPipeline2:
         ]
 
     # =========================================================
-    # DESC RED FLAG CHECK  — one cheap regex pass, nothing more
+    # DESC RED FLAG CHECK  - one cheap regex pass, nothing more
     # =========================================================
     def desc_red_flag_check(self, jobs):
         clean = []
@@ -288,7 +288,7 @@ class JobFilterPipeline2:
         return clean
 
     # =========================================================
-    # TAG PRESORT  — rough stack overlap count, no AI cost
+    # TAG PRESORT  - rough stack overlap count, no AI cost
     # Keeps best candidates at the front before we hit the limit
     # =========================================================
 
@@ -332,13 +332,13 @@ class JobFilterPipeline2:
             mandatory_hit = sum(1 for t in j.get("mandatory_tags", []) if t in my_stack)
             total_hit     = len(tags & my_stack)
             recency_bonus = max(0, 7 - j.get("days_old", 7))
-            # mandatory tags weighted 3x — they represent the job's core ask
+            # mandatory tags weighted 3x - they represent the job's core ask
             return mandatory_hit * 3 + total_hit + recency_bonus
 
         return sorted(jobs, key=overlap, reverse=True)
 
     # =========================================================
-    # AI SCORING  — tags go in, score + reason come out
+    # AI SCORING  - tags go in, score + reason come out
     # =========================================================
     def ai_score_batch(self, jobs):
         result = []
@@ -386,7 +386,7 @@ class JobFilterPipeline2:
 
         prompt2 = f"""
 You are a strict job filter for a backend developer. Score each job 0-100.
-Be precise — avoid clustering scores at 85 or 60. Use the full range.
+Be precise - avoid clustering scores at 85 or 60. Use the full range.
 
 CANDIDATE:
 - 2.3 years experience, backend-focused
@@ -397,34 +397,34 @@ CANDIDATE:
 - Prefers: startups, product companies, AI/automation work, remote/hybrid
 - Will NOT do: pure frontend, mobile, ML research, data science, DevOps-only
 
-SCORING RUBRIC — use the full range, not just 85/60:
+SCORING RUBRIC - use the full range, not just 85/60:
 
-90-100 — perfect fit, apply immediately
+90-100 - perfect fit, apply immediately
   Node.js OR Python is mandatory tag + backend/fullstack role or python/node js is in the title of the job
   + exp 0-2 yrs + familiar supporting stack. Startup or product company.
 
-75-89 — strong fit, apply
+75-89 - strong fit, apply
   Node.js or Python present (mandatory or optional) + backend lean
   + exp 0-3 yrs. Maybe one unfamiliar tag but overall good match.
 
-55-74 — decent fit, apply with lower priority
+55-74 - decent fit, apply with lower priority
   Some stack overlap, role is fullstack but not backend-heavy,
   or exp is 3-4 yrs, or company type unclear.
 
-30-54 — weak, skip unless nothing better
+30-54 - weak, skip unless nothing better
   Familiar tech present but role is vague, frontend-leaning,
   or exp mismatch 4-5 yrs.
 
-10-29 — poor match
+10-29 - poor match
   Very little stack overlap, or role is clearly not backend and have java,  
 
-0-9 — do not apply
+0-9 - do not apply
    That contain Java  and dotnet  Zero stack overlap (Java+Spring only, PHP only, .NET only etc.)
   OR walk-in / venue / intern role.
 
 RULES:
 - Node.js + MongoDB + 0-2yr backend → 90+, no exceptions
-- Java alongside Node/Python is fine — judge the full picture
+- Java alongside Node/Python is fine - judge the full picture
 - Fullstack with Node backend → 65-80 depending on tag quality
 - "Software Engineer" with Python/Node tags → treat as backend, score 70-85
 - Pure React/Angular/Vue with no backend tags → 0-15
@@ -455,29 +455,29 @@ CANDIDATE:
 
 SCORING:
 
-85-100 — apply immediately
+85-100 - apply immediately
   Node.js or Python is a mandatory tag, other tags are familiar stack,
   exp is 0-3 yrs or not specified, role is backend or fullstack-backend.
 
-60-84 — good fit, apply
+60-84 - good fit, apply
   Node.js or Python present but not mandatory, or fullstack role with
   backend-heavy tags, or slight exp mismatch (3-4 yrs).
 
-35-59 — decent, worth applying
+35-59 - decent, worth applying
   Some stack overlap but role is vague or tags are mixed frontend/backend,
   or exp is borderline 4-5 yrs.
 
-10-34 — weak match, skip unless desperate
+10-34 - weak match, skip unless desperate
   Familiar tech present but frontend-dominated, or very little tag overlap.
 
-0 — do not apply
+0 - do not apply
   Tags are entirely foreign stack (Java+Spring+Hibernate only, PHP only, etc.)
   with zero overlap with candidate's stack. OR walk-in / venue in title.
 
 COMMON SENSE RULES (these matter):
-- Java appearing alongside Node.js or Python is FINE — score on the whole picture.
+- Java appearing alongside Node.js or Python is FINE - score on the whole picture.
 - "Fullstack" with Node backend is a GOOD fit (60-80 range).
-- Missing one or two stack items is normal — don't penalise heavily.
+- Missing one or two stack items is normal - don't penalise heavily.
 - A job tagged [node.js, mongodb] with exp 0-2 yrs should score 85+.
 - A job tagged [java, spring, hibernate] with NO node/python should score 0-15.
 - Recency matters: jobs 0-1 days old get +5 bonus mentally.
@@ -515,7 +515,7 @@ Jobs:
             content = re.sub(r"```json|```", "", content).strip()
             match   = re.search(r"\{.*\}", content, re.S)
             if not match:
-                print("AI PARSE ERROR — raw:", content[:300])
+                print("AI PARSE ERROR - raw:", content[:300])
                 return {}
 
             data = json.loads(match.group(0))
@@ -526,7 +526,7 @@ Jobs:
             return {}
 
     # =========================================================
-    # RANK  — ai score + small recency bump
+    # RANK  - ai score + small recency bump
     # =========================================================
     def rank(self, jobs):
         return sorted(

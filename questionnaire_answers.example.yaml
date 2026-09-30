@@ -1,0 +1,12 @@
+# Explicit questionnaire answers for NopeRi.
+# Copy this file to 'questionnaire_answers.yaml' to override static or AI-generated answers.
+
+by_question_id: {}
+
+by_question_contains:
+  "notice period": "15 days"
+  "current ctc": "18 LPA"
+  "expected ctc": "25 LPA"
+  "relocate": "Yes"
+  "willing to relocate": "Yes"
+  "immediate joiner": "No"

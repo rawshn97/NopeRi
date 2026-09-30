@@ -45,7 +45,7 @@ def main():
         env["MIN_APPLY_SCORE"] = str(score)
         env["RESET_SEARCH_VARIATIONS"] = "1"
         env["EXHAUST_JOBS"] = "1"
-        env["USE_RAWSHN_CONFIG"] = "1"
+        env["USE_ADVANCED_CONFIG"] = "1"
         
         # Execute run.sh which handles apply_agent.py + Notion sync
         run_script = str(PROJECT_ROOT / "run.sh")
