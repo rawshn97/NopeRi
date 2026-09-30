@@ -22,13 +22,45 @@ STATE_FILE = RUNS_DIR / "scheduled_run_state.json"
 PID_FILE = RUNS_DIR / "scheduled_daemon.pid"
 
 
-def get_default_target_ist() -> datetime:
-    now_ist = datetime.now(timezone.utc).astimezone(IST)
-    if now_ist.hour >= 1:
-        target_date = (now_ist + timedelta(days=1)).date()
+def parse_time_str(time_str: str) -> tuple[int, int, int]:
+    """Parse HH:MM or HH:MM:SS string."""
+    parts = time_str.strip().split(":")
+    if len(parts) == 2:
+        return int(parts[0]), int(parts[1]), 0
+    elif len(parts) == 3:
+        return int(parts[0]), int(parts[1]), int(parts[2])
     else:
-        target_date = now_ist.date()
-    return datetime(target_date.year, target_date.month, target_date.day, 0, 10, 0, tzinfo=IST)
+        raise ValueError(f"Invalid time format: '{time_str}'. Expected HH:MM or HH:MM:SS (24-hour).")
+
+
+def get_target_ist(time_str: str | None = None, target_ist_str: str | None = None) -> datetime:
+    """Calculate target datetime in IST.
+
+    If target_ist_str is provided, parses exact timestamp.
+    Otherwise, uses time_str (defaulting to 00:10 IST). If the target time today in IST
+    has already passed, targets tomorrow. If still upcoming today, targets today.
+    """
+    now_ist = datetime.now(timezone.utc).astimezone(IST)
+
+    if target_ist_str:
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                dt = datetime.strptime(target_ist_str.strip(), fmt)
+                return dt.replace(tzinfo=IST)
+            except ValueError:
+                continue
+        raise ValueError(f"Invalid target-ist format: '{target_ist_str}'. Expected 'YYYY-MM-DD HH:MM:SS'.")
+
+    if not time_str:
+        time_str = os.environ.get("SCHEDULED_TIME_IST") or os.environ.get("TARGET_TIME_IST") or "00:10"
+
+    hour, minute, second = parse_time_str(time_str)
+    candidate_today = datetime(now_ist.year, now_ist.month, now_ist.day, hour, minute, second, tzinfo=IST)
+
+    if (candidate_today - now_ist).total_seconds() > 5:
+        return candidate_today
+    else:
+        return candidate_today + timedelta(days=1)
 
 
 def is_process_running(pid: int) -> bool:
@@ -56,10 +88,17 @@ def update_state(payload: dict) -> None:
 def main():
     parser = argparse.ArgumentParser(description="One-time scheduled runner for NopeRi")
     parser.add_argument(
+        "--time",
+        "-t",
+        type=str,
+        default=None,
+        help="Target time of day in IST (24-hour format: HH:MM or HH:MM:SS, e.g. 00:10, 01:30, 09:00). Default: 00:10 IST",
+    )
+    parser.add_argument(
         "--target-ist",
         type=str,
         default=None,
-        help="Target datetime in IST (format: YYYY-MM-DD HH:MM:SS)",
+        help="Exact target datetime in IST (format: YYYY-MM-DD HH:MM:SS)",
     )
     parser.add_argument(
         "--min-apply-count",
@@ -84,21 +123,42 @@ def main():
 
     PID_FILE.write_text(str(current_pid))
 
-    if args.target_ist:
-        target_dt = datetime.strptime(args.target_ist, "%Y-%m-%d %H:%M:%S").replace(tzinfo=IST)
-    else:
-        target_dt = get_default_target_ist()
+    def handle_signal(sig, frame):
+        finished_ist = datetime.now(timezone.utc).astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+        print(f"\n[{finished_ist} IST] Received termination signal ({sig}). Stopping scheduler daemon.")
+        update_state({
+            "status": "stopped",
+            "stopped_at": finished_ist,
+        })
+        if PID_FILE.exists():
+            try:
+                PID_FILE.unlink()
+            except OSError:
+                pass
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    target_dt = get_target_ist(time_str=args.time, target_ist_str=args.target_ist)
 
     now_ist = datetime.now(timezone.utc).astimezone(IST)
+    diff_secs = (target_dt - now_ist).total_seconds()
+    hrs, rem = divmod(int(diff_secs), 3600)
+    mins, secs = divmod(rem, 60)
+
     print(f"[{now_ist.strftime('%Y-%m-%d %H:%M:%S')} IST] Scheduled runner initialized.")
     print(f"  PID               : {current_pid}")
     print(f"  Target start time : {target_dt.strftime('%Y-%m-%d %H:%M:%S')} IST")
+    print(f"  Time remaining    : {hrs}h {mins}m {secs}s")
     print(f"  Min apply count   : {args.min_apply_count}")
+    print("  Hardware check    : Keep this laptop/PC powered on and awake until the run executes.")
     sys.stdout.flush()
 
     update_state({
         "pid": current_pid,
         "target_ist": target_dt.strftime("%Y-%m-%d %H:%M:%S"),
+        "target_time_arg": args.time or "00:10",
         "min_apply_count": args.min_apply_count,
         "status": "waiting",
         "initialized_at": now_ist.strftime("%Y-%m-%d %H:%M:%S"),

@@ -46,8 +46,10 @@ The upstream repository provides foundational low-level REST client capabilities
 9. **Cursor Agent Skill (`.cursor/skills/noperi/SKILL.md`):**
    - Built-in Cursor slash command (`/noperi` or "Run NopeRi") that triggers the application workflow, reports skipped questions in chat, and handles interactive auto-retries.
 
-10. **Autonomous 00:10 IST Quota Scheduler:**
-    - Scheduler daemon (`scripts/run_scheduled_once.py`) that fires immediately after the midnight quota reset window under `caffeinate` or `launchd`.
+10. **Autonomous Quota Scheduler (Configurable Time):**
+    - Scheduler daemon (`scripts/run_scheduled_once.py`) that waits until your chosen time then fires under `caffeinate` (default: 00:10 IST).
+    - Pass `--time HH:MM` (24-hour IST) or set `SCHEDULED_TIME_IST` env var to pick any run time.
+    - Laptop must remain powered on and awake; `caffeinate -ims` prevents sleep on AC power.
 
 ---
 

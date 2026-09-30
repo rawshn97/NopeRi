@@ -164,13 +164,60 @@ Standard questions are answered deterministically:
 
 ---
 
-## 8. Autonomous 00:10 IST Quota Scheduler
+## 8. Autonomous Quota Scheduler (Configurable Time)
 
-Naukri enforces a rolling 24-hour limit of 50 Easy Applies. A single daily sweep at 00:10 IST right after quota resets provides uninterrupted execution.
+Naukri enforces a rolling 24-hour limit of 50 Easy Applies. Running a single sweep right after the midnight quota reset ensures you get the most out of each day.
 
-Use the built-in daemon runner:
+### Prerequisites: Laptop Must Stay On
+
+> **Your machine must remain powered on and awake until the scheduled run fires.**
+> - `caffeinate -ims` prevents the system from sleeping on AC power.
+> - If the lid is closed without an external display, sleep prevention may fail.
+> - If the machine is shut down, the daemon exits and the run will not execute.
+
+### Quick Start
+
+Run at the default time (00:10 IST, recommended):
 ```bash
-nohup caffeinate -ims .venv/bin/python -u scripts/run_scheduled_once.py --min-apply-count 50 > runs/scheduled_daemon.log 2>&1 &
+bash scripts/start_scheduled_automation.sh
+```
+
+Run at a custom time of your choosing (24-hour IST):
+```bash
+bash scripts/start_scheduled_automation.sh --time 01:30
+bash scripts/start_scheduled_automation.sh --time 09:00 --min-apply-count 50
+```
+
+Set via environment variable instead of a flag:
+```bash
+SCHEDULED_TIME_IST=02:00 bash scripts/start_scheduled_automation.sh
+```
+
+### How the Time Logic Works
+
+- Pass `--time HH:MM` (24-hour IST). The script calculates the next occurrence: today if the time is still upcoming, tomorrow if it has already passed.
+- Pass `--target-ist "YYYY-MM-DD HH:MM:SS"` for an exact one-off timestamp.
+- Omit all flags to default to 00:10 IST.
+
+### Monitoring the Daemon
+
+```bash
+# View live countdown
+tail -f runs/scheduled_daemon.log
+
+# Check current state (waiting / running / completed / failed)
+cat runs/scheduled_run_state.json
+
+# Check whether the daemon process is alive
+cat runs/scheduled_daemon.pid | xargs kill -0 && echo "running" || echo "not running"
+```
+
+### Prompt to Set Up the Scheduler via Your AI Agent
+
+Paste this into your Cursor / AI agent chat to have it configure and start the scheduler for you:
+
+```
+Set up the NopeRi autonomous quota scheduler for me. Ask me what time I want it to run (in 24-hour IST format, e.g. 00:10 or 01:30). Then run: bash scripts/start_scheduled_automation.sh --time <my-chosen-time> --min-apply-count 50. Remind me that my laptop must remain powered on and awake until the run fires. Show me the startup log and the state file so I can confirm it is waiting correctly.
 ```
 
 ---
